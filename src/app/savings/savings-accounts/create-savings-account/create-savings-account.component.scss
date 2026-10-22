@@ -1,0 +1,7 @@
+@import '../../savings-products/create-savings-product/create-savings-product.component.scss';
+
+.field input[readonly] {
+  background: #f3f6f4;
+  color: #3c514a;
+  cursor: default;
+}

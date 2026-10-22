@@ -1,0 +1,52 @@
+<div class="page">
+  <div class="toolbar">
+    <a class="back" routerLink="/savings-accounts">← Savings accounts</a>
+  </div>
+
+  <section class="panel">
+    <p class="eyebrow">Accounts</p>
+    <h1 class="title">Open savings account</h1>
+    <p class="lede">Choose a customer and product, then enter the account number.</p>
+
+    <p class="muted" *ngIf="loading">Loading available clients and products...</p>
+    <p class="error" *ngIf="error">{{ error }}</p>
+
+    <form class="form" *ngIf="!loading" [formGroup]="accountForm" (ngSubmit)="onSubmit()" novalidate>
+      <label class="field">
+        <span>Client</span>
+        <input *ngIf="preselectedClientId !== null" type="text" [value]="selectedClientName()" readonly aria-readonly="true" />
+        <select *ngIf="preselectedClientId === null" formControlName="clientId" [class.invalid]="fieldError('clientId')">
+          <option [ngValue]="null">Select a client</option>
+          <option *ngFor="let client of clients" [ngValue]="client.id">
+            {{ client.firstName }} {{ client.lastName }} (#{{ client.id }})
+          </option>
+        </select>
+        <p class="field-error" *ngIf="fieldError('clientId')">{{ fieldError('clientId') }}</p>
+      </label>
+
+      <label class="field">
+        <span>Savings product</span>
+        <select formControlName="productId" [class.invalid]="fieldError('productId')">
+          <option [ngValue]="null">Select a product</option>
+          <option *ngFor="let product of products" [ngValue]="product.id">
+            {{ product.name }} · {{ product.nominalAnnualInterestRate | number: '1.2-6' }}%
+          </option>
+        </select>
+        <p class="field-error" *ngIf="fieldError('productId')">{{ fieldError('productId') }}</p>
+      </label>
+
+      <label class="field">
+        <span>Account number</span>
+        <input type="text" formControlName="accountNo" placeholder="SAV-0001" [class.invalid]="fieldError('accountNo')" />
+        <p class="field-error" *ngIf="fieldError('accountNo')">{{ fieldError('accountNo') }}</p>
+      </label>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary" [disabled]="saving">
+          {{ saving ? 'Creating...' : 'Create account' }}
+        </button>
+        <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving">Cancel</button>
+      </div>
+    </form>
+  </section>
+</div>

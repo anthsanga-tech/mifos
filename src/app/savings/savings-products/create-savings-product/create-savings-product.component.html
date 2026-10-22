@@ -1,0 +1,35 @@
+<div class="page">
+	<div class="toolbar"><a class="back" routerLink="/savings-products">← Savings products</a></div>
+	<section class="panel">
+		<p class="eyebrow">Catalog</p>
+		<h1 class="title">Create savings product</h1>
+		<p class="lede">Define the rate and balance terms for new savings accounts.</p>
+		<p class="error" *ngIf="error">{{ error }}</p>
+		<form class="form" [formGroup]="productForm" (ngSubmit)="onSubmit()" novalidate>
+			<label class="field">
+				<span>Product name</span>
+				<input type="text" formControlName="name" placeholder="Everyday savings" [class.invalid]="fieldError('name')" />
+				<p class="field-error" *ngIf="fieldError('name')">{{ fieldError('name') }}</p>
+			</label>
+			<label class="field">
+				<span>Nominal annual interest rate (%)</span>
+				<input type="number" min="0" step="0.000001" formControlName="nominalAnnualInterestRate" placeholder="2.500000" [class.invalid]="fieldError('nominalAnnualInterestRate')" />
+				<p class="field-error" *ngIf="fieldError('nominalAnnualInterestRate')">{{ fieldError('nominalAnnualInterestRate') }}</p>
+			</label>
+			<label class="field">
+				<span>Min required balance</span>
+				<input type="number" min="0" step="0.01" formControlName="minRequiredBalance" placeholder="0.00" [class.invalid]="fieldError('minRequiredBalance')" />
+				<p class="field-error" *ngIf="fieldError('minRequiredBalance')">{{ fieldError('minRequiredBalance') }}</p>
+			</label>
+			<label class="field">
+				<span>Withdrawal fee (flat)</span>
+				<input type="number" min="0" step="0.01" formControlName="withdrawalFee" placeholder="0.00" [class.invalid]="fieldError('withdrawalFee')" />
+				<p class="field-error" *ngIf="fieldError('withdrawalFee')">{{ fieldError('withdrawalFee') }}</p>
+			</label>
+			<div class="actions">
+				<button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Saving...' : 'Create product' }}</button>
+				<button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving">Cancel</button>
+			</div>
+		</form>
+	</section>
+</div>

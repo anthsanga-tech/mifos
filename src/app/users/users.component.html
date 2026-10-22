@@ -1,0 +1,70 @@
+<div class="page">
+  <div class="toolbar">
+    <a class="back" routerLink="/home">← Home</a>
+    <button type="button" class="btn-primary" (click)="goCreate()">Create user</button>
+  </div>
+
+  <section class="panel">
+    <header class="panel-header">
+      <h1 class="title">Users</h1>
+      <p class="lede">List users. Disable uses <code>?command=disable</code>.</p>
+    </header>
+
+    <p class="muted" *ngIf="busy">Loading…</p>
+    <p class="error" *ngIf="error">{{ error }}</p>
+
+    <div class="table-wrap" *ngIf="!busy">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Username</th>
+            <th scope="col">Display name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Status</th>
+            <th scope="col">Created</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.displayName }}</td>
+            <td>{{ user.email || '—' }}</td>
+            <td>
+              <span class="badge" [class.active]="user.status === 'ACTIVE'">{{ user.status }}</span>
+            </td>
+            <td class="mono">{{ user.createdOn }}</td>
+            <td class="actions">
+              <button type="button" class="btn-link" (click)="goEdit(user)" [disabled]="saving">
+                Edit
+              </button>
+              <button
+                type="button"
+                class="btn-danger"
+                *ngIf="user.status === 'ACTIVE'"
+                (click)="onDisable(user)"
+                [disabled]="saving"
+              >
+                Disable
+              </button>
+              <button
+                type="button"
+                class="btn-link"
+                *ngIf="user.status !== 'ACTIVE'"
+                (click)="onActivate(user)"
+                [disabled]="saving"
+              >
+                Activate
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="users.length === 0">
+            <td class="empty" colspan="7">No users yet. Create one to get started.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

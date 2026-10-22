@@ -1,0 +1,30 @@
+{
+  "name": "mini-fineract-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "ng": "ng",
+    "start": "ng serve --port 4201 --proxy-config proxy.conf.json",
+    "build": "ng build",
+    "watch": "ng build --watch --configuration development"
+  },
+  "dependencies": {
+    "@angular/animations": "14.3.0",
+    "@angular/common": "14.3.0",
+    "@angular/compiler": "14.3.0",
+    "@angular/core": "14.3.0",
+    "@angular/forms": "14.3.0",
+    "@angular/platform-browser": "14.3.0",
+    "@angular/platform-browser-dynamic": "14.3.0",
+    "@angular/router": "14.3.0",
+    "rxjs": "6.6.7",
+    "tslib": "^2.0.0",
+    "zone.js": "0.11.6"
+  },
+  "devDependencies": {
+    "@angular-devkit/build-angular": "14.2.12",
+    "@angular/cli": "14.2.12",
+    "@angular/compiler-cli": "14.3.0",
+    "typescript": "~4.8.4"
+  }
+}

@@ -1,0 +1,507 @@
+<div class="page">
+  <div class="sticky-layout">
+  <div class="toolbar">
+    <a class="back" routerLink="/savings-accounts">← Accounts</a>
+  </div>
+
+  <p class="muted" *ngIf="loading">Loading account activity...</p>
+  <p class="error" *ngIf="error">{{ error }}</p>
+
+  <ng-container *ngIf="account as currentAccount">
+    <section class="panel account-panel">
+      <div class="account-heading">
+        <div>
+          <p class="eyebrow">Savings account</p>
+          <h1 class="title">{{ currentAccount.accountNo }}</h1>
+        </div>
+        <span class="badge" [class.active]="currentAccount.status === 'ACTIVE'">{{ currentAccount.status }}</span>
+      </div>
+      <div class="account-summary">
+        <div class="balance-card">
+          <span class="summary-label">Current balance</span>
+          <strong class="balance-value">{{ currentAccount.balance | number: '1.2-6' }}</strong>
+        </div>
+        <div class="balance-card available-balance-card">
+          <span class="summary-label">Available balance</span>
+          <strong class="balance-value">{{ availableBalance() | number: '1.2-6' }}</strong>
+        </div>
+      </div>
+      <dl class="account-details">
+        <div class="detail-card">
+          <dt>Account holder</dt>
+          <dd>{{ clientLabel() }}</dd>
+        </div>
+        <div class="detail-card">
+          <dt>Savings product</dt>
+          <dd>{{ productLabel() }}</dd>
+        </div>
+        <div class="detail-card" *ngIf="activeHoldAmount() > 0">
+          <dt>Funds on hold</dt>
+          <dd>{{ activeHoldAmount() | number: '1.2-6' }}</dd>
+        </div>
+        <div class="detail-card">
+          <dt>Minimum balance</dt>
+          <dd>{{ (product?.minRequiredBalance ?? 0) | number: '1.2-2' }}</dd>
+        </div>
+        <div class="detail-card">
+          <dt>Withdrawal fee</dt>
+          <dd>{{ (product?.withdrawalFee ?? 0) | number: '1.2-2' }}</dd>
+        </div>
+      </dl>
+      <section class="maker-checker-account" aria-label="Maker-checker request status">
+        <div class="maker-checker-heading">
+          <strong>Maker-checker</strong>
+          <a routerLink="/maker-checker">Open maker-checker inbox</a>
+        </div>
+        <p class="field-error" *ngIf="makerCheckerError" role="alert">{{ makerCheckerError }}</p>
+        <p class="muted small" *ngIf="makerCheckerLoading">Loading approval status...</p>
+        <p class="muted small" *ngIf="!makerCheckerLoading && !makerCheckerError && makerCheckerRequests.length === 0">
+          No maker-checker requests for this account.
+        </p>
+        <ul *ngIf="makerCheckerRequests.length > 0">
+          <li *ngFor="let request of makerCheckerRequests">
+            <span>
+              {{ request.transactionType }} · {{ request.amount | number: '1.2-6' }} ·
+              <strong>{{ request.status }}</strong> · request #{{ request.id }} · made by {{ request.madeBy }}
+            </span>
+            <span class="maker-checker-pending-note" *ngIf="request.status === 'PENDING'">
+              Balance unchanged until approved.
+            </span>
+          </li>
+        </ul>
+      </section>
+      <p class="standing-instruction-account-message" *ngIf="standingInstructionMessage" role="status">
+        {{ standingInstructionMessage }}
+        <a routerLink="/maker-checker">Open maker-checker inbox</a>
+      </p>
+      <form class="account-number-form" *ngIf="currentAccount.status !== 'CLOSED'" [formGroup]="accountNumberForm" (ngSubmit)="saveAccountNumber()" novalidate>
+        <label class="field">
+          <span>Account no</span>
+          <input type="text" formControlName="accountNo" [class.invalid]="accountNumberError()" />
+          <p class="field-error" *ngIf="accountNumberError()">{{ accountNumberError() }}</p>
+        </label>
+        <button type="submit" class="btn-secondary" [disabled]="saving">
+          {{ saving ? 'Saving...' : 'Save account no' }}
+        </button>
+      </form>
+      <div class="account-actions">
+        <button type="button" class="btn-danger" *ngIf="currentAccount.status === 'ACTIVE'" (click)="closeAccount()" [disabled]="saving">Close</button>
+        <button type="button" class="btn-secondary" *ngIf="currentAccount.status === 'ACTIVE' && !isAccountFrozen(currentAccount)" (click)="freezeAccount()" [disabled]="saving">Freeze</button>
+        <button type="button" class="btn-secondary" *ngIf="currentAccount.status !== 'CLOSED' && isAccountFrozen(currentAccount)" (click)="unfreezeAccount()" [disabled]="saving">Unfreeze</button>
+        <button type="button" class="btn-secondary" routerLink="/savings-accounts">Back to list</button>
+      </div>
+    </section>
+  </ng-container>
+  </div>
+
+  <ng-container *ngIf="account as currentAccount">
+    <section class="panel transaction-panel" *ngIf="currentAccount.status !== 'CLOSED' && !isAccountFrozen(currentAccount)">
+      <h2>Deposit / Withdraw</h2>
+      <p class="muted small">
+        Transactions of {{ makerCheckerThreshold | number }} or more require checker approval; smaller transactions post immediately.
+      </p>
+      <form class="transaction-form" [formGroup]="transactionForm" (ngSubmit)="submitTransaction()" novalidate>
+        <label class="field">
+          <span>Type</span>
+          <select formControlName="transactionType" [disabled]="saving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)">
+            <option value="DEPOSIT">Deposit</option>
+            <option value="WITHDRAWAL">Withdrawal</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Amount</span>
+          <input type="number" min="0.01" step="0.01" formControlName="amount" placeholder="0.00" [class.invalid]="fieldError('amount')" [disabled]="saving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)" />
+          <p class="field-error" *ngIf="fieldError('amount')">{{ fieldError('amount') }}</p>
+        </label>
+        <button type="submit" class="btn-primary" [disabled]="saving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)">
+          {{ saving ? 'Posting...' : 'Post transaction' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="panel post-interest-panel" *ngIf="currentAccount.status === 'ACTIVE' && !isAccountFrozen(currentAccount)">
+      <h2>Post interest</h2>
+      <p class="muted small">
+        Real-world style: each day's end-of-day balance × the product's annual interest rate / 365, then summed. Overlapping periods are blocked.
+        Interest postings of {{ makerCheckerThreshold | number }} or more require checker approval.
+        <span *ngIf="currentAccount.activatedOn">From date cannot be before activation {{ currentAccount.activatedOn.slice(0, 10) }}.</span>
+      </p>
+      <form class="interest-form" [formGroup]="interestForm" (ngSubmit)="previewInterest()" novalidate>
+        <label class="field">
+          <span>From date</span>
+          <input type="date" formControlName="fromDate" [max]="interestForm.controls.toDate.value"
+            [min]="currentAccount.activatedOn ? currentAccount.activatedOn.slice(0, 10) : null"
+            (input)="clearInterestPreview()" [disabled]="interestPreviewLoading || interestPosting" />
+        </label>
+        <label class="field">
+          <span>To date</span>
+          <input type="date" formControlName="toDate" [min]="interestForm.controls.fromDate.value"
+            (input)="clearInterestPreview()" [disabled]="interestPreviewLoading || interestPosting" />
+        </label>
+        <button type="submit" class="btn-secondary" [disabled]="interestPreviewLoading || interestPosting">
+          {{ interestPreviewLoading ? 'Previewing...' : 'Preview' }}
+        </button>
+        <button type="button" class="btn-primary post-interest-button"
+          (click)="postInterest()" [disabled]="!interestPreview || interestPreviewLoading || interestPosting">
+          {{ interestPosting ? 'Posting...' : 'Post interest' }}
+        </button>
+      </form>
+      <p class="field-error" *ngIf="interestError">{{ interestError }}</p>
+      <p class="interest-preview" *ngIf="interestPreview as preview">
+        Preview · {{ preview.calculationMethod }} · {{ preview.days }} day(s) · avg daily balance
+        {{ preview.averageDailyBalance | number: '1.2-6' }} · rate
+        {{ preview.annualInterestRate | number: '1.0-2' }}% · amount
+        {{ preview.amount | number: '1.2-2' }}
+      </p>
+    </section>
+
+    <section class="panel transfer-panel" *ngIf="currentAccount.status !== 'CLOSED' && !isAccountFrozen(currentAccount)">
+      <h2>Transfer to another account</h2>
+      <p class="muted small">
+        Same client only. Destination must be ACTIVE. Transfers of {{ makerCheckerThreshold | number }} or more require checker approval.
+      </p>
+      <form class="transfer-form" [formGroup]="transferForm" (ngSubmit)="submitTransfer()" novalidate>
+        <label class="field">
+          <span>To account</span>
+          <select formControlName="toAccountId" [class.invalid]="transferFieldError('toAccountId')" [disabled]="saving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)">
+            <option [ngValue]="null">Select an account</option>
+            <option *ngFor="let destination of destinationAccounts()" [ngValue]="destination.id">
+              {{ destination.accountNo }} (balance {{ destination.balance | number: '1.2-6' }})
+            </option>
+          </select>
+          <p class="field-error" *ngIf="transferFieldError('toAccountId')">{{ transferFieldError('toAccountId') }}</p>
+        </label>
+        <label class="field">
+          <span>Amount</span>
+          <input type="number" min="0.01" step="0.01" formControlName="amount" placeholder="0.00" [class.invalid]="transferFieldError('amount')" [disabled]="saving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)" />
+          <p class="field-error" *ngIf="transferFieldError('amount')">{{ transferFieldError('amount') }}</p>
+        </label>
+        <button type="submit" class="btn-primary" [disabled]="saving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount) || destinationAccounts().length === 0">
+          {{ saving ? 'Transferring...' : 'Transfer' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="panel standing-instructions-panel" *ngIf="currentAccount.status !== 'CLOSED'">
+      <h2>Standing instructions</h2>
+      <p class="muted small">
+        Recurring same-client transfers. Create is free; large amounts (≥ {{ makerCheckerThreshold | number }}) go to pending on each run-due execution (Option B).
+        Skip advances next-due; fail does not.
+      </p>
+      <p class="muted small" *ngIf="destinationAccounts().length === 0">
+        Need another ACTIVE sibling account to create an SI.
+      </p>
+      <form class="standing-instruction-form"
+        *ngIf="currentAccount.status === 'ACTIVE' && !isAccountFrozen(currentAccount) && destinationAccounts().length > 0"
+        [formGroup]="standingInstructionForm"
+        (ngSubmit)="createStandingInstruction()"
+        novalidate>
+        <label class="field">
+          <span>To account</span>
+          <select formControlName="toAccountId"
+            [class.invalid]="standingInstructionFieldError('toAccountId')"
+            [disabled]="standingInstructionSaving || standingInstructionsRunning">
+            <option [ngValue]="null">Select an account</option>
+            <option *ngFor="let destination of destinationAccounts()" [ngValue]="destination.id">
+              {{ destination.accountNo }} (balance {{ destination.balance | number: '1.2-6' }})
+            </option>
+          </select>
+          <p class="field-error" *ngIf="standingInstructionFieldError('toAccountId')">{{ standingInstructionFieldError('toAccountId') }}</p>
+        </label>
+        <label class="field">
+          <span>Amount</span>
+          <input type="number" min="0.01" step="0.01" formControlName="amount" placeholder="0.00"
+            [class.invalid]="standingInstructionFieldError('amount')"
+            [disabled]="standingInstructionSaving || standingInstructionsRunning" />
+          <p class="field-error" *ngIf="standingInstructionFieldError('amount')">{{ standingInstructionFieldError('amount') }}</p>
+        </label>
+        <label class="field">
+          <span>Frequency</span>
+          <select formControlName="frequency" [disabled]="standingInstructionSaving || standingInstructionsRunning">
+            <option value="DAILY">DAILY (+1 day)</option>
+            <option value="WEEKLY">WEEKLY (+1 week)</option>
+            <option value="MONTHLY">MONTHLY (+1 month)</option>
+            <option value="QUARTERLY">QUARTERLY (+3 months)</option>
+            <option value="YEARLY">YEARLY (+1 year)</option>
+          </select>
+        </label>
+        <label class="field">
+          <span>Valid from</span>
+          <input type="date" formControlName="validFrom"
+            [class.invalid]="standingInstructionFieldError('validFrom')"
+            [disabled]="standingInstructionSaving || standingInstructionsRunning" />
+          <p class="field-error" *ngIf="standingInstructionFieldError('validFrom')">{{ standingInstructionFieldError('validFrom') }}</p>
+        </label>
+        <label class="field">
+          <span>Valid to (optional)</span>
+          <input type="date" formControlName="validTo" [min]="standingInstructionForm.controls.validFrom.value"
+            [disabled]="standingInstructionSaving || standingInstructionsRunning" />
+        </label>
+        <label class="field">
+          <span>Next due</span>
+          <input type="date" [value]="standingInstructionForm.controls.validFrom.value" readonly />
+        </label>
+        <button type="submit" class="btn-primary standing-instruction-submit"
+          [disabled]="standingInstructionSaving || standingInstructionsRunning">
+          {{ standingInstructionSaving ? 'Creating...' : 'Create standing instruction' }}
+        </button>
+      </form>
+      <p class="field-error" *ngIf="standingInstructionError" role="alert">{{ standingInstructionError }}</p>
+      <button type="button" class="btn-secondary run-standing-instructions"
+        (click)="runDueStandingInstructions()"
+        [disabled]="standingInstructionsRunning || standingInstructionSaving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)">
+        {{ standingInstructionsRunning ? 'Running due instructions...' : 'Run due instructions (today)' }}
+      </button>
+      <p class="muted small" *ngIf="standingInstructionsLoading">Loading standing instructions...</p>
+      <p class="field-error" *ngIf="standingInstructionsError" role="alert">{{ standingInstructionsError }}</p>
+      <button type="button" class="btn-secondary" *ngIf="standingInstructionsError"
+        (click)="loadStandingInstructions(currentAccount.id)" [disabled]="standingInstructionsLoading">
+        Retry loading standing instructions
+      </button>
+      <div class="table-wrap standing-instructions-table">
+        <table class="data-table">
+          <thead>
+            <tr><th>ID</th><th>From → To</th><th>Amount</th><th>Frequency</th><th>Next due</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let instruction of standingInstructions">
+              <td>{{ instruction.id }}</td>
+              <td>{{ currentAccount.accountNo }} → {{ standingInstructionDestinationLabel(instruction) }}</td>
+              <td class="amount">{{ instruction.amount | number: '1.2-6' }}</td>
+              <td>{{ instruction.frequency }}</td>
+              <td class="mono">{{ instruction.nextDue }}</td>
+              <td>{{ instruction.status }}</td>
+              <td class="standing-instruction-actions">
+                <button type="button" class="btn-inline" *ngIf="expandedStandingInstructionId !== instruction.id"
+                  (click)="showStandingInstructionHistory(instruction.id)">
+                  History
+                </button>
+                <button type="button" class="btn-inline" *ngIf="canPauseStandingInstruction(instruction)"
+                  (click)="changeStandingInstructionStatus(instruction, 'pause')"
+                  [disabled]="standingInstructionActionId !== null">
+                  {{ standingInstructionActionId === instruction.id && standingInstructionAction === 'pause' ? 'Pausing...' : 'Pause' }}
+                </button>
+                <button type="button" class="btn-inline" *ngIf="canResumeStandingInstruction(instruction)"
+                  (click)="changeStandingInstructionStatus(instruction, 'resume')"
+                  [disabled]="standingInstructionActionId !== null">
+                  {{ standingInstructionActionId === instruction.id && standingInstructionAction === 'resume' ? 'Resuming...' : 'Resume' }}
+                </button>
+                <button type="button" class="btn-inline btn-inline-danger" *ngIf="canCancelStandingInstruction(instruction)"
+                  (click)="changeStandingInstructionStatus(instruction, 'cancel')"
+                  [disabled]="standingInstructionActionId !== null">
+                  {{ standingInstructionActionId === instruction.id && standingInstructionAction === 'cancel' ? 'Cancelling...' : 'Cancel' }}
+                </button>
+              </td>
+            </tr>
+            <tr *ngFor="let instruction of standingInstructions"
+              class="standing-instruction-run-history-row"
+              [hidden]="expandedStandingInstructionId !== instruction.id">
+              <td colspan="7">
+                <div class="standing-instruction-run-history">
+                  <strong>Run history · SI #{{ instruction.id }}</strong>
+                  <p class="muted small" *ngIf="standingInstructionRunsLoading[instruction.id]">Loading run history...</p>
+                  <p class="field-error" *ngIf="standingInstructionRunsError[instruction.id]" role="alert">
+                    {{ standingInstructionRunsError[instruction.id] }}
+                    <button type="button" class="btn-inline" (click)="loadStandingInstructionRuns(currentAccount.id, instruction.id)"
+                      [disabled]="standingInstructionRunsLoading[instruction.id]">Retry</button>
+                  </p>
+                  <p class="muted small" *ngIf="!standingInstructionRunsLoading[instruction.id] &&
+                    !standingInstructionRunsError[instruction.id] && standingInstructionRuns[instruction.id]?.length === 0">
+                    No runs yet for this instruction.
+                  </p>
+                  <div class="table-wrap standing-instruction-runs-table"
+                    *ngIf="(standingInstructionRuns[instruction.id]?.length || 0) > 0">
+                    <table class="data-table">
+                      <thead>
+                        <tr><th>Due</th><th>Business</th><th>Status</th><th>Reason</th><th>Transfer / MC</th><th>Ran on</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr *ngFor="let run of standingInstructionRuns[instruction.id]">
+                          <td class="mono">{{ run.dueDate || '—' }}</td>
+                          <td class="mono">{{ run.businessDate || '—' }}</td>
+                          <td>{{ run.status }}</td>
+                          <td>{{ run.reason || '—' }}</td>
+                          <td>{{ standingInstructionRunReference(run) }}</td>
+                          <td class="mono">{{ run.ranOn || '—' }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="!standingInstructionsLoading && !standingInstructionsError && standingInstructions.length === 0">
+              <td colspan="7" class="empty">No standing instructions for this account yet.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel holds-panel" *ngIf="currentAccount.status !== 'CLOSED'">
+      <h2>Holds</h2>
+      <p class="muted small">Holds reduce available balance without changing ledger balance. Place hold only when ACTIVE.</p>
+      <form class="hold-form" [formGroup]="holdForm" (ngSubmit)="placeHold()" novalidate *ngIf="currentAccount.status === 'ACTIVE' && !isAccountFrozen(currentAccount)">
+        <label class="field">
+          <span>Amount</span>
+          <input type="number" min="0.01" step="0.01" formControlName="amount" placeholder="0.00" [class.invalid]="holdAmountError()" [disabled]="saving" />
+          <p class="field-error" *ngIf="holdAmountError()">{{ holdAmountError() }}</p>
+        </label>
+        <label class="field">
+          <span>Reason (optional)</span>
+          <input type="text" formControlName="reason" [disabled]="saving" />
+        </label>
+        <button type="submit" class="btn-primary" [disabled]="saving">
+          {{ saving ? 'Placing...' : 'Place hold' }}
+        </button>
+      </form>
+      <p class="field-error" *ngIf="holdsError">{{ holdsError }}</p>
+      <p class="muted small" *ngIf="holdsLoading">Loading holds...</p>
+      <p class="muted small" *ngIf="!holdsLoading && holds.length === 0">No holds recorded.</p>
+      <div class="table-wrap holds-table" *ngIf="holds.length > 0">
+        <table class="data-table">
+          <thead><tr><th>ID</th><th>Amount</th><th>Reason</th><th>Status</th><th>Created</th><th>Released</th><th>Actions</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let hold of holds">
+              <td>{{ hold.id }}</td>
+              <td class="amount">{{ hold.amount | number: '1.2-6' }}</td>
+              <td>{{ hold.reason || '-' }}</td>
+              <td>{{ hold.status }}</td>
+              <td class="mono">{{ hold.createdOn }}</td>
+              <td class="mono">{{ hold.releasedOn || '-' }}</td>
+              <td>
+                <button type="button" class="btn-release" *ngIf="hold.status === 'ACTIVE'" (click)="releaseHold(hold)" [disabled]="saving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)">
+                  Release
+                </button>
+                <span class="muted" *ngIf="hold.status !== 'ACTIVE'">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel history-panel">
+      <h2>Transaction history</h2>
+      <form class="transaction-date-filter" *ngIf="transactions.length > 0" (ngSubmit)="applyDateFilter()">
+        <label class="date-filter-field">
+          <span>From date</span>
+          <input type="date" [(ngModel)]="fromDate" name="fromDate" />
+        </label>
+        <label class="date-filter-field">
+          <span>To date</span>
+          <input type="date" [(ngModel)]="toDate" name="toDate" />
+        </label>
+        <button type="submit" class="btn-secondary">Apply</button>
+        <button type="button" class="btn-secondary" (click)="clearDateFilter()">Clear</button>
+        <button type="button" class="btn-primary" (click)="exportTransactionsCsv()">Export CSV</button>
+      </form>
+      <p class="field-error" *ngIf="dateFilterError">{{ dateFilterError }}</p>
+      <p class="muted small" *ngIf="filteredTransactions.length === 0">
+        {{ transactions.length === 0 ? 'No Transaction recorded.' : 'No transactions match these dates.' }}
+      </p>
+      <div class="table-wrap history-table" *ngIf="filteredTransactions.length > 0">
+        <table class="data-table">
+          <thead><tr><th>ID</th><th>Type</th><th>Amount</th><th>Date</th><th>Reversed</th><th>Group</th><th>Running balance</th><th *ngIf="currentAccount.status !== 'CLOSED'">Actions</th></tr></thead>
+          <tbody>
+            <tr *ngFor="let transaction of filteredTransactions" [class.reversed]="isReversed(transaction)">
+              <td>{{ transaction.id }}</td>
+              <td>
+                <span
+                  class="transaction-type"
+                  [class.withdrawal]="transaction.transactionType === 'WITHDRAWAL' || transaction.transactionType === 'TRANSFER_OUT'"
+                  [class.reversed]="transaction.reversed === 1"
+                >
+                  {{ transaction.transactionType }}
+                </span>
+              </td>
+              <td class="amount">{{ transaction.amount | number: '1.2-6' }}</td>
+              <td class="mono">{{ transaction.transactionDate }}</td>
+              <td>{{ isReversed(transaction) ? 'Yes' : 'No' }}</td>
+              <td>{{ transaction.transactionGroupId ?? '-' }}</td>
+              <td class="amount">{{ transaction.runningBalance | number: '1.2-6' }}</td>
+              <td *ngIf="currentAccount.status !== 'CLOSED'">
+                <button type="button" class="btn-undo" *ngIf="canUndo(transaction)" (click)="undoTransaction(transaction)" [disabled]="saving">
+                  Undo
+                </button>
+                <span class="muted" *ngIf="!canUndo(transaction)">—</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel notes-panel">
+      <h2>Notes</h2>
+      <p class="muted small">Staff comments on this account (max 500 characters).</p>
+      <form class="note-form" (ngSubmit)="addNote()" novalidate>
+        <label class="field note-field">
+          <span>NOTE</span>
+          <textarea [(ngModel)]="newNote" name="newNote" rows="4" maxlength="500" [class.invalid]="noteError"></textarea>
+          <p class="field-error" *ngIf="noteError">{{ noteError }}</p>
+        </label>
+        <button type="submit" class="btn-primary note-submit" [disabled]="noteSaving || notesLoading">
+          {{ noteSaving ? 'Saving...' : 'Add note' }}
+        </button>
+      </form>
+      <p class="muted small" *ngIf="notesLoading">Loading notes...</p>
+      <p class="field-error" *ngIf="notesError">{{ notesError }}</p>
+      <button type="button" class="btn-secondary" *ngIf="notesError" (click)="reloadNotes()" [disabled]="notesLoading">Retry loading notes</button>
+      <p class="muted small" *ngIf="!notesLoading && !notesError && notes.length === 0">No notes recorded.</p>
+      <div class="table-wrap notes-table" *ngIf="notes.length > 0">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>NOTE</th>
+              <th>BY</th>
+              <th>WHEN</th>
+              <th>ACTIONS</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let note of notes">
+              <td>{{ note.note }}</td>
+              <td>{{ note.by }}</td>
+              <td class="mono">{{ note.when }}</td>
+              <td>
+                <button type="button" class="btn-delete" (click)="deleteNote(note)" [disabled]="noteSaving">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel audit-panel">
+      <h2>Audit trail</h2>
+      <p class="muted small">Successful commands only — newest first.</p>
+      <p class="muted small" *ngIf="auditTrailLoading">Loading audit trail...</p>
+      <p class="field-error" *ngIf="auditTrailError">{{ auditTrailError }}</p>
+      <button type="button" class="btn-secondary" *ngIf="auditTrailError" (click)="reloadAuditTrail()" [disabled]="auditTrailLoading">Retry loading audit trail</button>
+      <p class="muted small" *ngIf="!auditTrailLoading && !auditTrailError && auditTrail.length === 0">No audit events recorded.</p>
+      <div class="table-wrap audit-table" *ngIf="auditTrail.length > 0">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>WHEN</th>
+              <th>EVENT</th>
+              <th>SUMMARY</th>
+              <th>AMOUNT</th>
+              <th>BY</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let entry of auditTrail">
+              <td class="mono">{{ entry.when }}</td>
+              <td>{{ entry.event }}</td>
+              <td>{{ entry.summary }}</td>
+              <td class="amount">{{ entry.amount !== null ? (entry.amount | number: '1.2-6') : '-' }}</td>
+              <td>{{ entry.by }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+</div>

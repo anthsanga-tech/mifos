@@ -1,0 +1,211 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #f0f2f4;
+  color: #1f2a37;
+  font-family: "Karla", "Segoe UI", sans-serif;
+}
+
+.maker-checker-page {
+  min-height: 100vh;
+  padding: 1.35rem 1.25rem 2.5rem;
+}
+
+.toolbar,
+.panel {
+  max-width: 72rem;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  color: #78889b;
+  font-size: 0.8rem;
+}
+
+.toolbar a {
+  color: #2f6d5f;
+  text-decoration: none;
+}
+
+.panel {
+  padding: 1rem 1.25rem;
+  background: #fff;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(15, 41, 66, 0.1);
+}
+
+.section-heading h1 {
+  margin: 0;
+  color: #263548;
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.section-heading p {
+  margin: 0.25rem 0 0.75rem;
+  color: #78889b;
+  font-size: 0.8rem;
+}
+
+.filters,
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.filters {
+  align-items: flex-end;
+}
+
+.filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  color: #748398;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.filters select {
+  min-width: 9rem;
+  padding: 0.35rem;
+  color: #263548;
+  font: inherit;
+  font-size: 0.75rem;
+}
+
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  padding: 0.4rem 0.65rem;
+  border-radius: 3px;
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary {
+  border: 1px solid #2f6d5f;
+  background: #2f6d5f;
+  color: #fff;
+}
+
+.btn-secondary {
+  border: 1px solid #4c8a7c;
+  background: #fff;
+  color: #2f6d5f;
+}
+
+.btn-danger {
+  border: 1px solid #c74343;
+  background: #fff;
+  color: #b52f2f;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.table-wrap {
+  overflow: auto;
+  border: 1px solid #e3e8ee;
+  border-radius: 3px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 0.78rem;
+}
+
+th,
+td {
+  padding: 0.5rem 0.65rem;
+  border-bottom: 1px solid #edf0f3;
+  text-align: left;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+thead th {
+  background: #f5f7f9;
+  color: #748398;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.045em;
+  text-transform: uppercase;
+}
+
+.account-link {
+  color: #2f6d5f;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.account-link:hover,
+.account-link:focus-visible {
+  color: #1e4a42;
+}
+
+.mono {
+  font-family: ui-monospace, "Cascadia Code", Consolas, monospace;
+  font-size: 0.7rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.own-request {
+  color: #b52f2f;
+  font-size: 0.7rem;
+}
+
+.muted,
+.pagination {
+  color: #748398;
+}
+
+.pagination {
+  margin: 0.75rem 0 0;
+  font-size: 0.75rem;
+}
+
+.error {
+  margin: 0 0 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid #e0a5a5;
+  border-radius: 4px;
+  background: #fff4f4;
+  color: #8b2525;
+  font-size: 0.82rem;
+}
+
+.empty {
+  padding: 1.25rem;
+  color: #748398;
+  text-align: center;
+}
+
+@media (max-width: 700px) {
+  .maker-checker-page {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  .panel {
+    padding: 0.9rem;
+  }
+}

@@ -1,0 +1,109 @@
+<div class="page">
+  <div class="sticky-layout">
+  <div class="toolbar">
+    <a class="back" routerLink="/home">← Home</a>
+    <div class="toolbar-actions">
+      <a class="btn-secondary" routerLink="/savings-products">Savings products</a>
+      <button type="button" class="btn-secondary" (click)="goCreateAccount()">Create account</button>
+    </div>
+  </div>
+
+  <header class="page-heading">
+    <div>
+      <p class="eyebrow">Accounts</p>
+      <h1 class="title">Savings accounts</h1>
+      <p class="lede">Review account balances, status, and activity.</p>
+    </div>
+    <div class="summary"><strong>{{ accounts.length }}</strong><span>accounts</span></div>
+  </header>
+
+  <p class="muted" *ngIf="busy">Loading savings data...</p>
+  <p class="error" *ngIf="error">{{ error }}</p>
+
+  <section class="panel">
+    <div class="section-heading">
+      <div><p class="eyebrow">Accounts</p><h2>Savings accounts</h2></div>
+    </div>
+    <form class="account-filter" *ngIf="accounts.length > 0" (ngSubmit)="applyFilters()">
+      <label class="filter-field">
+        <span>Name</span>
+        <input type="text" placeholder="Search by account no or client name" [(ngModel)]="nameFilter" name="nameFilter" />
+      </label>
+      <label class="filter-field">
+        <span>Client ID</span>
+        <input type="text" placeholder="e.g. 1" [(ngModel)]="clientIdFilter" name="clientIdFilter" />
+      </label>
+      <label class="filter-field">
+        <span>Status</span>
+        <select [(ngModel)]="statusFilter" name="statusFilter">
+          <option value="">All</option>
+          <option value="SUBMITTED">Submitted</option>
+          <option value="APPROVED">Approved</option>
+          <option value="ACTIVE">Active</option>
+          <option value="FROZEN">Frozen</option>
+          <option value="CLOSED">Closed</option>
+        </select>
+      </label>
+      <button type="submit" class="btn-secondary">Filter</button>
+      <button type="button" class="btn-secondary" (click)="clearFilters()">Clear</button>
+    </form>
+    <p class="filter-summary" *ngIf="isClientFiltered">Filtered by client #{{ clientIdFilter }}</p>
+  </section>
+  </div>
+  <section class="panel table-panel">
+    <div class="table-wrap accounts-table">
+      <table class="data-table">
+        <thead><tr><th>Account</th><th>Client</th><th>Product</th><th>Balance</th><th>Available</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr *ngFor="let account of paginatedAccounts" [class.inactive-account]="account.status !== 'ACTIVE'">
+            <td>{{ account.accountNo }}</td>
+            <td>{{ clientName(account.clientId) }}</td>
+            <td>{{ productName(account.productId) }}</td>
+            <td class="amount">{{ accountBalance(account) | number: '1.2-6' }}</td>
+            <td class="amount">{{ accountAvailableBalance(account) === null ? '—' : (accountAvailableBalance(account) | number: '1.2-6') }}</td>
+            <td><span class="badge" [class.active]="account.status === 'ACTIVE' && account.freezeStatus !== 'FROZEN'" [class.frozen]="account.status === 'ACTIVE' && account.freezeStatus === 'FROZEN'">{{ account.status === 'ACTIVE' && account.freezeStatus === 'FROZEN' ? account.freezeStatus : account.status }}</span></td>
+            <td class="actions">
+              <button
+                class="btn-secondary"
+                *ngIf="account.status === 'SUBMITTED'"
+                (click)="approve(account)">
+                Approve
+              </button>
+
+              <button
+                class="btn-primary"
+                *ngIf="account.status === 'APPROVED'"
+                (click)="activate(account)">
+                Activate
+              </button>
+
+              <button
+                class="btn-primary"
+                *ngIf="account.status === 'ACTIVE' || account.status === 'CLOSED'"
+                (click)="openAccount(account)">
+                Open
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="filteredAccounts.length === 0 && !busy"><td colspan="7" class="empty">{{ accounts.length === 0 ? 'No accounts yet. Open one to begin.' : 'No accounts match these filters.' }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <footer class="pagination" *ngIf="filteredAccounts.length > 0">
+      <label class="page-size">
+        <span>Items per page:</span>
+        <select [(ngModel)]="pageSize" [ngModelOptions]="{ standalone: true }" (ngModelChange)="changePageSize()">
+          <option *ngFor="let size of pageSizes" [ngValue]="size">{{ size }}</option>
+        </select>
+      </label>
+      <span class="page-range">{{ pageRangeLabel }}</span>
+      <div class="page-controls" aria-label="Table pagination">
+        <button type="button" aria-label="First page" title="First page" [disabled]="pageIndex === 0" (click)="goToPage(0)">|‹</button>
+        <button type="button" aria-label="Previous page" title="Previous page" [disabled]="pageIndex === 0" (click)="goToPage(pageIndex - 1)">‹</button>
+        <button type="button" aria-label="Next page" title="Next page" [disabled]="pageIndex >= pageCount - 1" (click)="goToPage(pageIndex + 1)">›</button>
+        <button type="button" aria-label="Last page" title="Last page" [disabled]="pageIndex >= pageCount - 1" (click)="goToPage(pageCount - 1)">›|</button>
+      </div>
+    </footer>
+  </section>
+
+</div>
