@@ -1,0 +1,8 @@
+{
+  "/mini-fineract-provider": {
+    "target": "http://localhost:8088",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}

@@ -1,0 +1,177 @@
+<div class="page">
+  <div class="toolbar">
+    <a class="back" routerLink="/clients">← Clients</a>
+  </div>
+
+  <section class="panel client-panel">
+    <header class="panel-header">
+      <h1 class="title">Edit client</h1>
+      <p class="lede" *ngIf="client">Editing client #{{ client.id }}</p>
+    </header>
+
+    <p class="muted" *ngIf="busy">Loading…</p>
+    <p class="error" *ngIf="error">{{ error }}</p>
+
+    <form class="form" *ngIf="client && !busy" [formGroup]="clientForm" (ngSubmit)="onSubmit()" novalidate>
+      <p class="section-label">Identity</p>
+      <div class="field-grid">
+        <label class="field">
+          <span>First name</span>
+          <input type="text" formControlName="firstName" autocomplete="given-name" [class.invalid]="fieldError('firstName')" />
+          <p class="field-error" *ngIf="fieldError('firstName')">{{ fieldError('firstName') }}</p>
+        </label>
+        <label class="field">
+          <span>Last name</span>
+          <input type="text" formControlName="lastName" autocomplete="family-name" [class.invalid]="fieldError('lastName')" />
+          <p class="field-error" *ngIf="fieldError('lastName')">{{ fieldError('lastName') }}</p>
+        </label>
+        <label class="field">
+          <span>Email <em>(optional)</em></span>
+          <input type="email" formControlName="email" autocomplete="email" [class.invalid]="fieldError('email')" />
+          <p class="field-error" *ngIf="fieldError('email')">{{ fieldError('email') }}</p>
+        </label>
+        <label class="field">
+          <span>Phone number</span>
+          <input type="tel" formControlName="phoneNumber" autocomplete="tel" inputmode="numeric" [class.invalid]="fieldError('phoneNumber')" />
+          <p class="field-error" *ngIf="fieldError('phoneNumber')">{{ fieldError('phoneNumber') }}</p>
+        </label>
+        <label class="field">
+          <span>Date of birth</span>
+          <input type="date" formControlName="dateOfBirth" [class.invalid]="fieldError('dateOfBirth')" />
+          <p class="field-error" *ngIf="fieldError('dateOfBirth')">{{ fieldError('dateOfBirth') }}</p>
+        </label>
+        <label class="field">
+          <span>Gender</span>
+          <input type="text" formControlName="gender" [class.invalid]="fieldError('gender')" />
+          <p class="field-error" *ngIf="fieldError('gender')">{{ fieldError('gender') }}</p>
+        </label>
+      </div>
+
+      <p class="section-label">Address</p>
+      <div class="field-grid">
+        <label class="field field-wide">
+          <span>Street</span>
+          <input type="text" formControlName="address" autocomplete="street-address" [class.invalid]="fieldError('address')" />
+          <p class="field-error" *ngIf="fieldError('address')">{{ fieldError('address') }}</p>
+        </label>
+        <label class="field">
+          <span>City</span>
+          <input type="text" formControlName="city" autocomplete="address-level2" [class.invalid]="fieldError('city')" />
+          <p class="field-error" *ngIf="fieldError('city')">{{ fieldError('city') }}</p>
+        </label>
+        <label class="field">
+          <span>State</span>
+          <input type="text" formControlName="state" autocomplete="address-level1" [class.invalid]="fieldError('state')" />
+          <p class="field-error" *ngIf="fieldError('state')">{{ fieldError('state') }}</p>
+        </label>
+        <label class="field">
+          <span>Zip code</span>
+          <input type="text" formControlName="zipCode" autocomplete="postal-code" [class.invalid]="fieldError('zipCode')" />
+          <p class="field-error" *ngIf="fieldError('zipCode')">{{ fieldError('zipCode') }}</p>
+        </label>
+        <label class="field">
+          <span>Country</span>
+          <input type="text" formControlName="country" autocomplete="country-name" [class.invalid]="fieldError('country')" />
+          <p class="field-error" *ngIf="fieldError('country')">{{ fieldError('country') }}</p>
+        </label>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary" [disabled]="saving">
+          {{ saving ? 'Saving…' : 'Save changes' }}
+        </button>
+        <button type="button" class="btn-secondary" (click)="viewSavingsAccounts()" [disabled]="saving">
+          View on account list
+        </button>
+        <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="portfolio panel" *ngIf="client">
+    <header class="portfolio-header">
+      <div>
+        <p class="section-label">Client accounts</p>
+        <h2>Savings portfolio</h2>
+        <p class="portfolio-lede">All savings accounts owned by {{ client.firstName }} {{ client.lastName }}.</p>
+      </div>
+      <button type="button" class="btn-primary" (click)="createSavingsAccount()">Create savings account</button>
+    </header>
+
+    <p class="muted" *ngIf="portfolioBusy">Loading savings portfolio...</p>
+    <p class="error" *ngIf="portfolioError">{{ portfolioError }}</p>
+    <p class="error" *ngIf="portfolioActionError">{{ portfolioActionError }}</p>
+
+    <ng-container *ngIf="!portfolioBusy && !portfolioError">
+      <div class="portfolio-totals">
+        <div class="total-card">
+          <span>Accounts</span>
+          <strong>{{ portfolioAccounts.length }}</strong>
+        </div>
+        <div class="total-card">
+          <span>Total balance</span>
+          <strong>{{ totalPortfolioBalance | number: '1.2-2' }}</strong>
+        </div>
+        <div class="total-card">
+          <span>Total available</span>
+          <strong>{{ totalPortfolioAvailable | number: '1.2-2' }}</strong>
+        </div>
+      </div>
+
+      <div class="status-filters" aria-label="Filter accounts by status">
+        <button type="button" [class.selected]="portfolioStatusFilter === ''" (click)="portfolioStatusFilter = ''">
+          All <span>{{ portfolioAccounts.length }}</span>
+        </button>
+        <button type="button" *ngFor="let status of portfolioStatuses"
+          [class.selected]="portfolioStatusFilter === status" (click)="portfolioStatusFilter = status">
+          {{ status }} <span>{{ portfolioStatusCount(status) }}</span>
+        </button>
+      </div>
+
+      <div class="portfolio-table-wrap">
+        <table class="portfolio-table">
+          <thead>
+            <tr>
+              <th>Account no</th>
+              <th>Product</th>
+              <th>Status</th>
+              <th>Balance</th>
+              <th>Available</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let account of filteredPortfolioAccounts">
+              <td class="account-number">{{ account.accountNo }}</td>
+              <td>{{ portfolioProductName(account.productId) }}</td>
+              <td><span class="account-status" [class.active]="portfolioAccountStatus(account) === 'ACTIVE'" [class.frozen]="portfolioAccountStatus(account) === 'FROZEN' && account.status === 'ACTIVE'">{{ portfolioAccountStatus(account) }}</span></td>
+              <td class="account-amount">{{ account.balance | number: '1.2-2' }}</td>
+              <td class="account-amount">{{ accountAvailableBalance(account) | number: '1.2-2' }}</td>
+              <td>
+                <button type="button" class="btn-open"
+                  *ngIf="account.status === 'SUBMITTED'"
+                  [disabled]="portfolioCommandBusy"
+                  (click)="approveSavingsAccount(account)">Approve</button>
+                <button type="button" class="btn-open"
+                  *ngIf="account.status === 'APPROVED'"
+                  [disabled]="portfolioCommandBusy"
+                  (click)="activateSavingsAccount(account)">Activate</button>
+                <button type="button" class="btn-open"
+                  *ngIf="account.status === 'ACTIVE' || account.status === 'CLOSED'"
+                  (click)="openSavingsAccount(account)">Open</button>
+                <span class="unavailable-action" *ngIf="account.status === 'FROZEN'">—</span>
+              </td>
+            </tr>
+            <tr *ngIf="filteredPortfolioAccounts.length === 0">
+              <td class="empty-portfolio" colspan="6">
+                {{ portfolioAccounts.length === 0 ? 'No savings accounts for this client yet.' : 'No accounts with this status.' }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </ng-container>
+  </section>
+</div>

@@ -1,0 +1,70 @@
+<div class="page">
+  <div class="toolbar">
+    <a class="back" routerLink="/home">← Home</a>
+    <button type="button" class="btn-primary" (click)="goCreate()">Create client</button>
+  </div>
+
+  <section class="panel">
+    <header class="panel-header">
+      <h1 class="title">Clients</h1>
+      <p class="lede">List clients. Close uses <code>?command=close</code>.</p>
+    </header>
+
+    <p class="muted" *ngIf="busy">Loading…</p>
+    <p class="error" *ngIf="error">{{ error }}</p>
+
+    <div class="table-wrap" *ngIf="!busy">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Name</th>
+            <th scope="col">Email</th>
+            <th scope="col">Phone</th>
+            <th scope="col">Status</th>
+            <th scope="col">Created</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let client of clients">
+            <td>{{ client.id }}</td>
+            <td>{{ client.firstName }} {{ client.lastName }}</td>
+            <td>{{ client.email || '—' }}</td>
+            <td>{{ client.phoneNumber || '—' }}</td>
+            <td>
+              <span class="badge" [class.active]="client.status === 'ACTIVE'">{{ client.status }}</span>
+            </td>
+            <td class="mono">{{ client.createdOn }}</td>
+            <td class="actions">
+              <button type="button" class="btn-link" (click)="goEdit(client)" [disabled]="saving">
+                Edit
+              </button>
+              <button
+                type="button"
+                class="btn-danger"
+                *ngIf="client.status === 'ACTIVE'"
+                (click)="onClose(client)"
+                [disabled]="saving"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                class="btn-link"
+                *ngIf="client.status !== 'ACTIVE'"
+                (click)="onActivate(client)"
+                [disabled]="saving"
+              >
+                Activate
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="clients.length === 0">
+            <td class="empty" colspan="7">No clients yet. Create one to get started.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

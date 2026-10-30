@@ -1,0 +1,156 @@
+<main class="home-page">
+  <div class="toolbar">
+    <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="busy">
+      {{ busy ? 'Refreshing...' : 'Refresh dashboard' }}
+    </button>
+    <button type="button" class="btn-primary" (click)="logout()">Sign out</button>
+  </div>
+
+  <div class="dashboard">
+    <p class="error" *ngIf="error" role="alert">{{ error }}</p>
+
+    <section class="panel maker-checker-panel" aria-labelledby="maker-checker-title">
+      <header class="section-heading">
+        <h1 id="maker-checker-title">Pending approvals</h1>
+        <p>Maker-checker inbox for large withdrawals, transfers, deposits, and interest postings.</p>
+      </header>
+      <div class="maker-checker-entry">
+        <strong *ngIf="!makerCheckerLoading && !makerCheckerError">{{ pendingMakerCheckerCount }}</strong>
+        <span class="muted" *ngIf="makerCheckerLoading">Loading...</span>
+        <button type="button" class="btn-primary" (click)="openMakerCheckerInbox()">Open inbox</button>
+      </div>
+      <p class="error maker-checker-error" *ngIf="makerCheckerError" role="alert">
+        {{ makerCheckerError }}
+      </p>
+    </section>
+
+    <section class="panel overview-panel" aria-labelledby="overview-title">
+      <header class="section-heading">
+        <h1 id="overview-title">Savings overview</h1>
+        <p>Server-side KPIs (CLOSED excluded from money totals).</p>
+      </header>
+
+      <div class="status-grid" aria-label="Savings account counts">
+        <button type="button" class="metric-card" (click)="showAccounts('ALL')">
+          <span>Total accounts</span>
+          <strong>{{ accounts.length }}</strong>
+        </button>
+        <button type="button" class="metric-card" (click)="showAccounts('ACTIVE')">
+          <span>Active</span>
+          <strong>{{ activeCount }}</strong>
+        </button>
+        <button type="button" class="metric-card" (click)="showAccounts('FROZEN')">
+          <span>Frozen</span>
+          <strong>{{ frozenCount }}</strong>
+        </button>
+        <button type="button" class="metric-card" (click)="showAccounts('SUBMITTED')">
+          <span>Submitted</span>
+          <strong>{{ submittedCount }}</strong>
+        </button>
+        <button type="button" class="metric-card" (click)="showAccounts('APPROVED')">
+          <span>Approved</span>
+          <strong>{{ approvedCount }}</strong>
+        </button>
+        <button type="button" class="metric-card" (click)="showAccounts('CLOSED')">
+          <span>Closed</span>
+          <strong>{{ closedCount }}</strong>
+        </button>
+      </div>
+
+      <div class="balance-grid" aria-label="Savings balances">
+        <article>
+          <span>Ledger total</span>
+          <strong>{{ ledgerTotal | number: '1.2-6' }}</strong>
+        </article>
+        <article>
+          <span>Available total</span>
+          <strong>{{ availableTotal | number: '1.2-6' }}</strong>
+        </article>
+        <article>
+          <span>Active holds</span>
+          <strong>{{ activeHoldsTotal | number: '1.2-6' }}</strong>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel activity-panel" aria-labelledby="recent-activity-title">
+      <header class="section-heading">
+        <h2 id="recent-activity-title">Recent savings activity</h2>
+        <p>Latest audit events across accounts.</p>
+      </header>
+
+      <div class="recent-table-wrap">
+        <table class="recent-table">
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">Event</th>
+              <th scope="col">Account</th>
+              <th scope="col">Client</th>
+              <th scope="col">Amount</th>
+              <th scope="col">By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let activity of recentActivities">
+              <td class="mono">{{ activity.when }}</td>
+              <td>{{ activity.event }}</td>
+              <td>{{ activity.accountNo }}</td>
+              <td>{{ activity.clientName }}</td>
+              <td>{{ activity.amount === null ? '—' : (activity.amount | number: '1.2-6') }}</td>
+              <td>{{ activity.by }}</td>
+            </tr>
+            <tr *ngIf="!busy && recentActivities.length === 0">
+              <td class="empty" colspan="6">No savings activity to show.</td>
+            </tr>
+            <tr *ngIf="busy && recentActivities.length === 0">
+              <td class="empty" colspan="6">Loading savings activity...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <section class="panel activities-panel" aria-labelledby="activities-title">
+    <header class="section-heading">
+      <h2 id="activities-title">Welcome, {{ username }}!</h2>
+    </header>
+
+    <label class="search-field">
+      <span>Search activity</span>
+      <input
+        type="search"
+        [formControl]="activitySearch"
+        placeholder="Search Activity"
+        autocomplete="off"
+      />
+    </label>
+
+    <div class="activities-table-wrap" *ngIf="filteredActivities | async as matches">
+      <table class="activities-table">
+        <thead>
+          <tr>
+            <th scope="col">Activity</th>
+            <th scope="col">Path</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let activity of matches">
+            <td>{{ activity.activity }}</td>
+            <td class="activity-path">{{ activity.path }}</td>
+            <td>
+              <button type="button" class="open-button" (click)="goToActivity(activity.path)">
+                Open
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="matches.length === 0">
+            <td class="empty" colspan="3">No matching activity</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>

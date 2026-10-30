@@ -1,0 +1,47 @@
+<div class="page">
+  <div class="toolbar">
+    <a class="back" routerLink="/users">← Users</a>
+  </div>
+
+  <section class="panel">
+    <header class="panel-header">
+      <h1 class="title">Edit user</h1>
+      <p class="lede" *ngIf="user">Username <strong>{{ user.username }}</strong> cannot be changed.</p>
+    </header>
+
+    <p class="muted" *ngIf="busy">Loading…</p>
+    <p class="error" *ngIf="error">{{ error }}</p>
+
+    <form class="form" *ngIf="user && !busy" [formGroup]="userForm" (ngSubmit)="onSubmit()" novalidate>
+      <label class="field">
+        <span>Display name</span>
+        <input
+          type="text"
+          formControlName="displayName"
+          autocomplete="name"
+          [class.invalid]="fieldError('displayName')"
+        />
+        <p class="field-error" *ngIf="fieldError('displayName')">{{ fieldError('displayName') }}</p>
+      </label>
+      <label class="field">
+        <span>Email <em>(optional)</em></span>
+        <input
+          type="email"
+          formControlName="email"
+          autocomplete="email"
+          [class.invalid]="fieldError('email')"
+        />
+        <p class="field-error" *ngIf="fieldError('email')">{{ fieldError('email') }}</p>
+      </label>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary" [disabled]="saving">
+          {{ saving ? 'Saving…' : 'Save changes' }}
+        </button>
+        <button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving">
+          Cancel
+        </button>
+      </div>
+    </form>
+  </section>
+</div>

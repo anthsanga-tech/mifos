@@ -1,0 +1,103 @@
+<main class="maker-checker-page">
+  <div class="toolbar">
+    <a routerLink="/home">← Home</a>
+    <span>Signed in as {{ username }}</span>
+  </div>
+
+  <section class="panel" aria-labelledby="inbox-title">
+    <header class="section-heading">
+      <h1 id="inbox-title">Maker-checker inbox</h1>
+      <p>Review pending money commands (threshold ≥ 10,000). Makers cannot approve their own requests.</p>
+    </header>
+
+    <div class="filters">
+      <label>
+        <span>Status</span>
+        <select [(ngModel)]="filter" (change)="onFilterChange()" [disabled]="loading">
+          <option value="PENDING">PENDING</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECTED</option>
+          <option value="ALL">ALL</option>
+        </select>
+      </label>
+      <button type="button" class="btn-secondary" (click)="refresh()" [disabled]="loading">
+        {{ loading ? 'Loading...' : 'Refresh' }}
+      </button>
+    </div>
+
+    <p class="error" *ngIf="error" role="alert">{{ error }}</p>
+    <p class="error" *ngIf="actionError" role="alert">{{ actionError }}</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Type</th>
+            <th scope="col">Account</th>
+            <th scope="col">Amount</th>
+            <th scope="col">Status</th>
+            <th scope="col">Made by</th>
+            <th scope="col">Made on</th>
+            <th scope="col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let request of visibleRequests">
+            <td>{{ request.id }}</td>
+            <td>{{ request.transactionType }}</td>
+            <td>
+              <a
+                class="account-link"
+                href="#"
+                (click)="openAccount(request, $event)"
+              >
+                {{ request.savingsAccountNo }}
+              </a>
+            </td>
+            <td>{{ request.amount | number: '1.2-6' }}</td>
+            <td>{{ request.status }}</td>
+            <td>{{ request.madeBy }}</td>
+            <td class="mono">{{ request.madeOn }}</td>
+            <td class="actions">
+              <ng-container *ngIf="request.status === 'PENDING'">
+                <span class="own-request" *ngIf="isOwnRequest(request)">Own request</span>
+                <ng-container *ngIf="!isOwnRequest(request)">
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    (click)="approve(request)"
+                    [disabled]="loading || actionRequestId !== null"
+                  >
+                    {{ actionRequestId === request.id ? 'Approving...' : 'Approve' }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-danger"
+                    (click)="reject(request)"
+                    [disabled]="loading || actionRequestId !== null"
+                  >
+                    Reject
+                  </button>
+                </ng-container>
+              </ng-container>
+              <span class="muted" *ngIf="request.status !== 'PENDING'">—</span>
+            </td>
+          </tr>
+          <tr *ngIf="!loading && !error && visibleRequests.length === 0">
+            <td class="empty" colspan="9">No {{ filter === 'ALL' ? '' : filter.toLowerCase() + ' ' }}requests.</td>
+          </tr>
+          <tr *ngIf="loading && requests.length === 0">
+            <td class="empty" colspan="9">Loading requests...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pagination" *ngIf="filteredRequests.length > 0">
+      <button type="button" class="btn-secondary" (click)="previousPage()" [disabled]="page === 0">Prev</button>
+      <span>Page {{ page + 1 }} of {{ pageCount }} · {{ filteredRequests.length }} total</span>
+      <button type="button" class="btn-secondary" (click)="nextPage()" [disabled]="page >= pageCount - 1">Next</button>
+    </div>
+  </section>
+</main>
