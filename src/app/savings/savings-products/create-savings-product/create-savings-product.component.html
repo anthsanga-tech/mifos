@@ -26,6 +26,11 @@
 				<input type="number" min="0" step="0.01" formControlName="withdrawalFee" placeholder="0.00" [class.invalid]="fieldError('withdrawalFee')" />
 				<p class="field-error" *ngIf="fieldError('withdrawalFee')">{{ fieldError('withdrawalFee') }}</p>
 			</label>
+			<label class="field">
+				<span>Closure fee (flat)</span>
+				<input type="number" min="0" step="0.01" formControlName="closureFee" placeholder="0.00" [class.invalid]="fieldError('closureFee')" />
+				<p class="field-error" *ngIf="fieldError('closureFee')">{{ fieldError('closureFee') }}</p>
+			</label>
 			<div class="actions">
 				<button type="submit" class="btn-primary" [disabled]="saving">{{ saving ? 'Saving...' : 'Create product' }}</button>
 				<button type="button" class="btn-secondary" (click)="cancel()" [disabled]="saving">Cancel</button>

@@ -30,17 +30,18 @@
   <section class="panel table-panel">
     <div class="table-wrap products-table">
       <table class="data-table">
-        <thead><tr><th>Name</th><th>Annual interest</th><th>Min required balance</th><th>Withdrawal fee</th><th>Created</th><th>Action</th></tr></thead>
+        <thead><tr><th>Name</th><th>Annual interest</th><th>Min required balance</th><th>Withdrawal fee</th><th>Closure fee</th><th>Created</th><th>Action</th></tr></thead>
         <tbody>
           <tr *ngFor="let product of products">
             <td><strong>{{ product.name }}</strong></td>
             <td>{{ product.nominalAnnualInterestRate | number: '1.2-6' }}%</td>
             <td>{{ (product.minRequiredBalance ?? 0) | number: '1.2-2' }}</td>
             <td>{{ (product.withdrawalFee ?? 0) | number: '1.2-2' }}</td>
+            <td>{{ (product.closureFee ?? 0) | number: '1.2-2' }}</td>
             <td class="mono">{{ product.createdOn }}</td>
             <td><button type="button" class="btn-link" (click)="goEditProduct(product)">Edit</button></td>
           </tr>
-          <tr *ngIf="products.length === 0 && !busy"><td colspan="6" class="empty">No savings products yet.</td></tr>
+          <tr *ngIf="products.length === 0 && !busy"><td colspan="7" class="empty">No savings products yet.</td></tr>
         </tbody>
       </table>
     </div>

@@ -8,6 +8,7 @@ export interface SavingsProduct {
   nominalAnnualInterestRate: number;
   minRequiredBalance?: number;
   withdrawalFee?: number;
+  closureFee?: number;
   createdOn: string;
 }
 
@@ -41,6 +42,7 @@ export interface SavingsTransaction {
   runningBalance: number;
   reversed: number | string;
   transactionGroupId?: string;
+  undoable?: boolean;
 }
 
 export interface SavingsClient {
@@ -54,6 +56,36 @@ export interface SavingsProductPayload {
   nominalAnnualInterestRate: number;
   minRequiredBalance: number;
   withdrawalFee: number;
+  closureFee: number;
+}
+
+export interface SavingsAccountClosureDestination {
+  accountId: number;
+  accountNo: string;
+  balance: number;
+}
+
+export interface SavingsAccountClosurePreview {
+  canClose: boolean;
+  balance: number;
+  availableBalance: number;
+  closureFee: number;
+  residualAmount: number;
+  activeHoldAmount: number;
+  activeHoldCount: number;
+  openStandingInstructionCount: number;
+  pendingMakerCheckerCount: number;
+  frozen: boolean;
+  requiresApproval: boolean;
+  eligibleDestinations: SavingsAccountClosureDestination[];
+  blockers: string[];
+}
+
+export interface SavingsAccountClosureResult {
+  status: 'CLOSED' | 'PENDING_APPROVAL';
+  message: string;
+  makerCheckerId: number | null;
+  destinationAccountId: number | null;
 }
 
 export interface SavingsAccountPayload {
@@ -103,6 +135,7 @@ export interface StandingInstructionRun {
   status: string;
   reason?: string | null;
   transferId?: number | null;
+  transferGroupId?: string | null;
   makerCheckerRequestId?: number | null;
   ranOn: string;
 }
@@ -169,7 +202,7 @@ export type MakerCheckerStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLE
 export interface MakerCheckerRequest {
   id: number;
   savingsAccountNo: string;
-  transactionType: 'DEPOSIT' | 'WITHDRAWAL' | 'INTEREST';
+  transactionType: 'DEPOSIT' | 'WITHDRAWAL' | 'INTEREST' | 'TRANSFER';
   payloadJson: string;
   amount: number;
   status: MakerCheckerStatus;
@@ -214,10 +247,23 @@ export class SavingsService {
     return this.http.put<SavingsAccount>(`${this.apiBase}/savings-accounts/${id}`, payload);
   }
 
-  accountCommand(id: number, command: 'approve' | 'activate' | 'freeze' | 'unfreeze' | 'close'): Observable<SavingsAccount> {
+  accountCommand(id: number, command: 'approve' | 'activate' | 'freeze' | 'unfreeze'): Observable<SavingsAccount> {
     return this.http.post<SavingsAccount>(
       `${this.apiBase}/savings-accounts/${id}?command=${command}`,
       {}
+    );
+  }
+
+  previewAccountClosure(accountId: number): Observable<SavingsAccountClosurePreview> {
+    return this.http.get<SavingsAccountClosurePreview>(
+      `${this.apiBase}/savings-accounts/${accountId}/close-settlement-preview`
+    );
+  }
+
+  closeAndSettleAccount(accountId: number, destinationAccountId: number | null): Observable<SavingsAccountClosureResult> {
+    return this.http.post<SavingsAccountClosureResult>(
+      `${this.apiBase}/savings-accounts/${accountId}/close-settlement`,
+      { destinationAccountId }
     );
   }
 

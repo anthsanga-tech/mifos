@@ -21,7 +21,9 @@ import {
   SavingsAccountAuditEntry,
   SavingsInterestPayload,
   SavingsInterestPreview,
-  MakerCheckerRequest
+  MakerCheckerRequest,
+  SavingsAccountClosurePreview,
+  SavingsAccountClosureResult
 } from '../savings.service';
 
 @Component({
@@ -77,6 +79,13 @@ export class SavingsAccountDetailComponent implements OnInit {
   interestError = '';
   interestPreviewLoading = false;
   interestPosting = false;
+  closurePreview: SavingsAccountClosurePreview | null = null;
+  closurePreviewLoading = false;
+  closurePreviewError = '';
+  closureSettlementSaving = false;
+  closureSettlementMessage = '';
+  closureSettlementError = '';
+  closureDestinationAccountId: number | null = null;
 
   interestForm = new FormGroup({
     fromDate: new FormControl('', { nonNullable: true, validators: [Validators.required] }),
@@ -264,19 +273,33 @@ export class SavingsAccountDetailComponent implements OnInit {
     if (run.transferId !== null && run.transferId !== undefined) {
       references.push(`Transfer #${run.transferId}`);
     }
+    if (run.transferGroupId) {
+      references.push(`Transfer group ${run.transferGroupId}`);
+    }
     if (run.makerCheckerRequestId !== null && run.makerCheckerRequestId !== undefined) {
-      references.push(`MC #${run.makerCheckerRequestId}`);
+      references.push(
+        run.status.toUpperCase() === 'PENDING_APPROVAL'
+          ? `pending #${run.makerCheckerRequestId}`
+          : `MC #${run.makerCheckerRequestId}`
+      );
     }
     return references.length > 0 ? references.join(' / ') : '—';
   }
 
-  showStandingInstructionHistory(instructionId: number): void {
+  canShowStandingInstructionHistory(instructionId: number): boolean {
+    return this.standingInstructionRunsLoading[instructionId] ||
+      !!this.standingInstructionRunsError[instructionId] ||
+      (this.standingInstructionRuns[instructionId] || []).length > 0;
+  }
+
+  toggleStandingInstructionHistory(instructionId: number): void {
     if (this.expandedStandingInstructionId === instructionId) {
       this.expandedStandingInstructionId = null;
       return;
     }
+
     this.expandedStandingInstructionId = instructionId;
-    if (this.account && !this.standingInstructionRuns[instructionId]) {
+    if (this.account) {
       this.loadStandingInstructionRuns(this.account.id, instructionId);
     }
   }
@@ -286,7 +309,9 @@ export class SavingsAccountDetailComponent implements OnInit {
     delete this.standingInstructionRunsError[instructionId];
     this.savingsService.getStandingInstructionRuns(accountId, instructionId).subscribe(
       (runs) => {
-        this.standingInstructionRuns[instructionId] = Array.isArray(runs) ? runs : [];
+        const latestRun = Array.isArray(runs) ? runs[0] : undefined;
+        this.standingInstructionRuns[instructionId] =
+          latestRun && this.isDisplayableStandingInstructionRun(latestRun) ? [latestRun] : [];
         this.standingInstructionRunsLoading[instructionId] = false;
       },
       (err: HttpErrorResponse) => {
@@ -295,6 +320,11 @@ export class SavingsAccountDetailComponent implements OnInit {
           this.messageFrom(err, 'Failed to load standing instruction run history.');
       }
     );
+  }
+
+  private isDisplayableStandingInstructionRun(run: StandingInstructionRun): boolean {
+    const status = run.status.toUpperCase();
+    return status === 'SUCCESS' || status === 'PENDING_APPROVAL' || status === 'REJECT';
   }
 
   canPauseStandingInstruction(instruction: StandingInstruction): boolean {
@@ -380,7 +410,7 @@ export class SavingsAccountDetailComponent implements OnInit {
     this.standingInstructionMessage = '';
     this.standingInstructionSaving = true;
     this.savingsService.createStandingInstruction(accountId, payload).subscribe(
-      (createdInstruction) => {
+      () => {
         this.standingInstructionSaving = false;
         this.standingInstructionForm.reset({
           toAccountId: null,
@@ -390,10 +420,8 @@ export class SavingsAccountDetailComponent implements OnInit {
           validTo: ''
         });
         this.standingInstructionMessage = 'Standing instruction created.';
-        this.expandedStandingInstructionId = createdInstruction.id;
         this.loadAuditTrail(accountId);
         this.loadStandingInstructions(accountId);
-        this.loadStandingInstructionRuns(accountId, createdInstruction.id);
       },
       (err: HttpErrorResponse) => {
         this.standingInstructionSaving = false;
@@ -413,21 +441,62 @@ export class SavingsAccountDetailComponent implements OnInit {
     this.standingInstructionsRunning = true;
     const accountId = this.account.id;
     this.savingsService.runDueStandingInstructions(accountId).subscribe(
-      () => {
+      (result) => {
         this.standingInstructionsRunning = false;
-        this.standingInstructionMessage = 'Due standing instructions processed.';
+        this.standingInstructionMessage = this.standingInstructionRunDueMessage(result);
         this.loadAuditTrail(accountId);
         this.refreshAccountData();
         this.loadStandingInstructions(accountId);
-        if (this.expandedStandingInstructionId !== null) {
-          this.loadStandingInstructionRuns(accountId, this.expandedStandingInstructionId);
-        }
       },
       (err: HttpErrorResponse) => {
         this.standingInstructionsRunning = false;
-        this.standingInstructionError = this.messageFrom(err, 'Failed to run due standing instructions.');
+        if (err.status === 409) {
+          this.standingInstructionMessage = this.messageFrom(
+            err,
+            'A paused standing instruction was not run.'
+          );
+          this.loadAuditTrail(accountId);
+          this.refreshAccountData();
+          this.loadStandingInstructions(accountId);
+        } else {
+          this.standingInstructionError = this.messageFrom(
+            err,
+            'Failed to run due standing instructions.'
+          );
+        }
       }
     );
+  }
+
+  private standingInstructionRunDueMessage(result: unknown): string {
+    if (typeof result === 'string' && result.trim()) {
+      return result.trim();
+    }
+
+    if (typeof result === 'object' && result !== null) {
+      const summary = result as { [key: string]: unknown };
+      const message = summary['message'];
+      if (typeof message === 'string' && message.trim()) {
+        return message.trim();
+      }
+
+      const businessDate = summary['businessDate'];
+      const success = summary['success'];
+      const skipped = summary['skipped'];
+      const failed = summary['failed'];
+      const pending = summary['pending'];
+      if (
+        typeof businessDate === 'string' &&
+        typeof success === 'number' && Number.isFinite(success) &&
+        typeof skipped === 'number' && Number.isFinite(skipped) &&
+        typeof failed === 'number' && Number.isFinite(failed) &&
+        typeof pending === 'number' && Number.isFinite(pending)
+      ) {
+        return `Run-due ${businessDate}: processed (${success} success, ${skipped} skipped, ${failed} failed, ${pending} pending).`;
+      }
+    }
+
+    return 'Run-due request completed, but the provider returned no run summary.';
   }
 
   isAccountFrozen(account: SavingsAccount | null = this.account): boolean {
@@ -644,7 +713,9 @@ export class SavingsAccountDetailComponent implements OnInit {
   }
 
   canUndo(transaction: SavingsTransaction): boolean {
-    return !this.isAccountFrozen() && Number(transaction.reversed) === 0 && transaction.id === this.latestUndoableTransactionId;
+    return this.account?.status === 'ACTIVE' && !this.isAccountFrozen() &&
+      transaction.undoable !== false &&
+      Number(transaction.reversed) === 0 && transaction.id === this.latestUndoableTransactionId;
   }
 
   isReversed(transaction: SavingsTransaction): boolean {
@@ -784,17 +855,72 @@ export class SavingsAccountDetailComponent implements OnInit {
     }
   }
 
-  closeAccount(): void {
-    if (!this.account || this.account.status !== 'ACTIVE' || this.saving) {
+  confirmCloseAndSettle(): void {
+    if (!this.account || this.account.status !== 'ACTIVE' || this.closureSettlementSaving) {
       return;
     }
-    this.error = '';
-    this.saving = true;
-    this.savingsService.accountCommand(this.account.id, 'close').subscribe(
-      () => this.router.navigateByUrl('/savings-accounts'),
+    if (!this.closurePreview || !this.canConfirmClosure()) {
+      this.closureSettlementError = 'Refresh the preview and resolve all blockers before confirming closure.';
+      return;
+    }
+    this.closureSettlementError = '';
+    this.closureSettlementMessage = '';
+    this.closureSettlementSaving = true;
+    this.savingsService.closeAndSettleAccount(this.account.id, this.closureDestinationAccountId).subscribe(
+      (result: SavingsAccountClosureResult) => {
+        this.closureSettlementSaving = false;
+        this.closureSettlementMessage = result.message;
+        this.refreshAccountData();
+      },
       (err: HttpErrorResponse) => {
-        this.saving = false;
-        this.error = this.messageFrom(err, 'Failed to close savings account.');
+        this.closureSettlementSaving = false;
+        this.closureSettlementError = this.messageFrom(err, 'Failed to close and settle savings account.');
+        this.loadClosurePreview(this.account!.id);
+      }
+    );
+  }
+
+  refreshClosurePreview(): void {
+    if (this.account) {
+      this.loadClosurePreview(this.account.id);
+    }
+  }
+
+  canConfirmClosure(): boolean {
+    if (!this.closurePreview?.canClose) {
+      return false;
+    }
+    if (this.closurePreview.residualAmount <= 0) {
+      return true;
+    }
+    return this.closurePreview.eligibleDestinations.some(
+      (destination) => destination.accountId === this.closureDestinationAccountId
+    );
+  }
+
+  closureDestinationChanged(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    this.closureDestinationAccountId = value ? Number(value) : null;
+  }
+
+  private loadClosurePreview(accountId: number): void {
+    this.closurePreviewLoading = true;
+    this.closurePreviewError = '';
+    this.closurePreview = null;
+    this.savingsService.previewAccountClosure(accountId).subscribe(
+      (preview) => {
+        this.closurePreview = preview;
+        const destinations = preview.eligibleDestinations || [];
+        if (destinations.length === 1) {
+          this.closureDestinationAccountId = destinations[0].accountId;
+        } else if (!destinations.some((destination) => destination.accountId === this.closureDestinationAccountId)) {
+          this.closureDestinationAccountId = null;
+        }
+        this.closurePreviewLoading = false;
+      },
+      (err: HttpErrorResponse) => {
+        this.closurePreviewLoading = false;
+        this.closurePreviewError = this.messageFrom(err, 'Failed to load close-and-settle preview.');
       }
     );
   }
@@ -857,6 +983,7 @@ export class SavingsAccountDetailComponent implements OnInit {
         this.holdForm.reset({ amount: null, reason: '' });
         this.loadHolds(this.account!.id);
         this.loadAuditTrail(this.account!.id);
+        this.loadClosurePreview(this.account!.id);
       },
       (err: HttpErrorResponse) => {
         this.saving = false;
@@ -876,6 +1003,7 @@ export class SavingsAccountDetailComponent implements OnInit {
         this.saving = false;
         this.loadHolds(this.account!.id);
         this.loadAuditTrail(this.account!.id);
+        this.loadClosurePreview(this.account!.id);
       },
       (err: HttpErrorResponse) => {
         this.saving = false;
@@ -931,7 +1059,7 @@ export class SavingsAccountDetailComponent implements OnInit {
   private loadMakerCheckerRequests(accountId: number): void {
     this.makerCheckerLoading = true;
     this.makerCheckerError = '';
-    this.savingsService.getMakerCheckerRequests(undefined, accountId).subscribe(
+    this.savingsService.getMakerCheckerRequests('PENDING', accountId).subscribe(
       (requests) => {
         this.makerCheckerRequests = requests;
         this.makerCheckerLoading = false;
@@ -956,6 +1084,7 @@ export class SavingsAccountDetailComponent implements OnInit {
         this.account = this.availableAccounts.find((item) => item.id === accountId) || null;
         if (this.account) {
           this.accountNumberForm.reset({ accountNo: this.account.accountNo });
+          this.loadClosurePreview(this.account.id);
           this.loadHolds(this.account.id);
           this.loadNotes(this.account.id);
           this.loadAuditTrail(this.account.id);
@@ -984,6 +1113,7 @@ export class SavingsAccountDetailComponent implements OnInit {
     }
     this.loadAuditTrail(this.account.id);
     this.loadMakerCheckerRequests(this.account.id);
+    this.loadClosurePreview(this.account.id);
     forkJoin(
       this.savingsService.getAccounts(),
       this.savingsService.getTransactions(this.account.id)
@@ -1007,6 +1137,12 @@ export class SavingsAccountDetailComponent implements OnInit {
       (instructions) => {
         this.standingInstructions = Array.isArray(instructions) ? instructions : [];
         this.standingInstructionsLoading = false;
+        this.standingInstructionRuns = {};
+        this.standingInstructionRunsLoading = {};
+        this.standingInstructionRunsError = {};
+        this.standingInstructions.forEach((instruction) => {
+          this.loadStandingInstructionRuns(accountId, instruction.id);
+        });
       },
       (err: HttpErrorResponse) => {
         this.standingInstructionsLoading = false;

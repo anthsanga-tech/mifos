@@ -47,8 +47,13 @@
           <dt>Withdrawal fee</dt>
           <dd>{{ (product?.withdrawalFee ?? 0) | number: '1.2-2' }}</dd>
         </div>
+        <div class="detail-card">
+          <dt>Closure fee</dt>
+          <dd>{{ (product?.closureFee ?? 0) | number: '1.2-2' }}</dd>
+        </div>
       </dl>
-      <section class="maker-checker-account" aria-label="Maker-checker request status">
+      <section class="maker-checker-account" aria-label="Maker-checker request status"
+        *ngIf="makerCheckerLoading || makerCheckerError || makerCheckerRequests.length > 0">
         <div class="maker-checker-heading">
           <strong>Maker-checker</strong>
           <a routerLink="/maker-checker">Open maker-checker inbox</a>
@@ -56,15 +61,15 @@
         <p class="field-error" *ngIf="makerCheckerError" role="alert">{{ makerCheckerError }}</p>
         <p class="muted small" *ngIf="makerCheckerLoading">Loading approval status...</p>
         <p class="muted small" *ngIf="!makerCheckerLoading && !makerCheckerError && makerCheckerRequests.length === 0">
-          No maker-checker requests for this account.
+          No pending maker-checker requests for this account.
         </p>
         <ul *ngIf="makerCheckerRequests.length > 0">
           <li *ngFor="let request of makerCheckerRequests">
             <span>
               {{ request.transactionType }} · {{ request.amount | number: '1.2-6' }} ·
-              <strong>{{ request.status }}</strong> · request #{{ request.id }} · made by {{ request.madeBy }}
+              <strong>PENDING</strong> · request #{{ request.id }} · made by {{ request.madeBy }}
             </span>
-            <span class="maker-checker-pending-note" *ngIf="request.status === 'PENDING'">
+            <span class="maker-checker-pending-note">
               Balance unchanged until approved.
             </span>
           </li>
@@ -72,7 +77,6 @@
       </section>
       <p class="standing-instruction-account-message" *ngIf="standingInstructionMessage" role="status">
         {{ standingInstructionMessage }}
-        <a routerLink="/maker-checker">Open maker-checker inbox</a>
       </p>
       <form class="account-number-form" *ngIf="currentAccount.status !== 'CLOSED'" [formGroup]="accountNumberForm" (ngSubmit)="saveAccountNumber()" novalidate>
         <label class="field">
@@ -85,7 +89,6 @@
         </button>
       </form>
       <div class="account-actions">
-        <button type="button" class="btn-danger" *ngIf="currentAccount.status === 'ACTIVE'" (click)="closeAccount()" [disabled]="saving">Close</button>
         <button type="button" class="btn-secondary" *ngIf="currentAccount.status === 'ACTIVE' && !isAccountFrozen(currentAccount)" (click)="freezeAccount()" [disabled]="saving">Freeze</button>
         <button type="button" class="btn-secondary" *ngIf="currentAccount.status !== 'CLOSED' && isAccountFrozen(currentAccount)" (click)="unfreezeAccount()" [disabled]="saving">Unfreeze</button>
         <button type="button" class="btn-secondary" routerLink="/savings-accounts">Back to list</button>
@@ -95,6 +98,75 @@
   </div>
 
   <ng-container *ngIf="account as currentAccount">
+    <section class="panel closure-settlement-panel" *ngIf="currentAccount.status === 'ACTIVE'">
+      <h2>Close &amp; settle</h2>
+      <p class="muted small">
+        Preview blockers first. Residual after the closure fee transfers to a same-client ACTIVE account.
+        Active holds, pending maker-checker requests, and a frozen account block closure. Open standing instructions are warnings only and auto-cancel on successful close.
+      </p>
+      <p class="muted small" *ngIf="closurePreviewLoading">Loading close-and-settle preview...</p>
+      <p class="field-error closure-settlement-error" *ngIf="closurePreviewError" role="alert">{{ closurePreviewError }}</p>
+      <p class="closure-preview-status" *ngIf="closurePreview as preview">
+        Preview loaded · canClose={{ preview.canClose ? 'YES' : 'NO' }} · residual={{ preview.residualAmount | number: '1.2-6' }}
+      </p>
+      <button type="button" class="btn-secondary" (click)="refreshClosurePreview()"
+        [disabled]="closurePreviewLoading || closureSettlementSaving">
+        {{ closurePreviewLoading ? 'Refreshing preview...' : 'Refresh preview' }}
+      </button>
+      <ng-container *ngIf="closurePreview as preview">
+        <p class="muted small closure-preview-summary">
+          Can close: {{ preview.canClose ? 'YES' : 'NO' }} ·
+          Balance {{ preview.balance | number: '1.2-6' }} ·
+          Available {{ preview.availableBalance | number: '1.2-6' }} ·
+          Closure fee {{ preview.closureFee | number: '1.2-6' }} ·
+          Residual {{ preview.residualAmount | number: '1.2-6' }}
+        </p>
+        <p class="muted small closure-preview-summary">
+          Holds {{ preview.activeHoldCount }} ({{ preview.activeHoldAmount | number: '1.2-6' }}) ·
+          Open SIs {{ preview.openStandingInstructionCount }} ·
+          Pending MC {{ preview.pendingMakerCheckerCount }}
+        </p>
+        <ul class="closure-policy">
+          <li>Closure fee {{ preview.closureFee | number: '1.2-6' }} will be charged as FEE.</li>
+          <li *ngIf="preview.requiresApproval">
+            Residual {{ preview.residualAmount | number: '1.2-6' }} requires maker-checker approval; the account closes automatically after approval.
+          </li>
+          <li *ngIf="!preview.requiresApproval && preview.residualAmount > 0">
+            Residual {{ preview.residualAmount | number: '1.2-6' }} settles immediately when you confirm.
+          </li>
+          <li *ngIf="preview.openStandingInstructionCount > 0">
+            You may close: {{ preview.openStandingInstructionCount }} open standing instruction(s) will be cancelled when close succeeds and will not keep running.
+          </li>
+        </ul>
+        <label class="field closure-destination"
+          *ngIf="preview.canClose && preview.residualAmount > 0 && preview.eligibleDestinations.length > 0">
+          <span>Transfer residual to</span>
+          <select [value]="closureDestinationAccountId || ''" (change)="closureDestinationChanged($event)">
+            <option value="" *ngIf="preview.eligibleDestinations.length > 1">Select a sibling account</option>
+            <option *ngFor="let destination of preview.eligibleDestinations" [value]="destination.accountId">
+              {{ destination.accountNo }} (balance {{ destination.balance | number: '1.2-6' }})
+            </option>
+          </select>
+        </label>
+        <ul class="closure-blockers" *ngIf="preview.blockers.length > 0">
+          <li *ngFor="let blocker of preview.blockers">{{ blocker }}</li>
+        </ul>
+        <p class="muted small" *ngIf="preview.residualAmount === 0 && preview.canClose">
+          Balance settles to zero after the closure fee — close can complete immediately.
+        </p>
+        <p class="field-error closure-settlement-error" *ngIf="closureSettlementError" role="alert">
+          {{ closureSettlementError }}
+        </p>
+        <button type="button" class="btn-danger closure-confirm-button" (click)="confirmCloseAndSettle()"
+          [disabled]="closureSettlementSaving || closurePreviewLoading || !canConfirmClosure()">
+          {{ closureSettlementSaving ? 'Processing...' : preview.requiresApproval ? 'Submit settlement for approval' : 'Confirm close & settle' }}
+        </button>
+      </ng-container>
+    </section>
+    <p class="closure-settlement-success" *ngIf="closureSettlementMessage" role="status">
+      {{ closureSettlementMessage }}
+    </p>
+
     <section class="panel transaction-panel" *ngIf="currentAccount.status !== 'CLOSED' && !isAccountFrozen(currentAccount)">
       <h2>Deposit / Withdraw</h2>
       <p class="muted small">
@@ -246,7 +318,9 @@
           {{ standingInstructionSaving ? 'Creating...' : 'Create standing instruction' }}
         </button>
       </form>
-      <p class="field-error" *ngIf="standingInstructionError" role="alert">{{ standingInstructionError }}</p>
+      <p class="field-error standing-instruction-error" *ngIf="standingInstructionError" role="alert">
+        {{ standingInstructionError }}
+      </p>
       <button type="button" class="btn-secondary run-standing-instructions"
         (click)="runDueStandingInstructions()"
         [disabled]="standingInstructionsRunning || standingInstructionSaving || currentAccount.status !== 'ACTIVE' || isAccountFrozen(currentAccount)">
@@ -272,9 +346,9 @@
               <td class="mono">{{ instruction.nextDue }}</td>
               <td>{{ instruction.status }}</td>
               <td class="standing-instruction-actions">
-                <button type="button" class="btn-inline" *ngIf="expandedStandingInstructionId !== instruction.id"
-                  (click)="showStandingInstructionHistory(instruction.id)">
-                  History
+                <button type="button" class="btn-inline" *ngIf="canShowStandingInstructionHistory(instruction.id)"
+                  (click)="toggleStandingInstructionHistory(instruction.id)">
+                  {{ expandedStandingInstructionId === instruction.id ? 'Hide history' : 'History' }}
                 </button>
                 <button type="button" class="btn-inline" *ngIf="canPauseStandingInstruction(instruction)"
                   (click)="changeStandingInstructionStatus(instruction, 'pause')"
@@ -293,9 +367,11 @@
                 </button>
               </td>
             </tr>
-            <tr *ngFor="let instruction of standingInstructions"
+            <ng-container *ngFor="let instruction of standingInstructions">
+            <tr
               class="standing-instruction-run-history-row"
-              [hidden]="expandedStandingInstructionId !== instruction.id">
+              *ngIf="expandedStandingInstructionId === instruction.id &&
+                canShowStandingInstructionHistory(instruction.id)">
               <td colspan="7">
                 <div class="standing-instruction-run-history">
                   <strong>Run history · SI #{{ instruction.id }}</strong>
@@ -304,10 +380,6 @@
                     {{ standingInstructionRunsError[instruction.id] }}
                     <button type="button" class="btn-inline" (click)="loadStandingInstructionRuns(currentAccount.id, instruction.id)"
                       [disabled]="standingInstructionRunsLoading[instruction.id]">Retry</button>
-                  </p>
-                  <p class="muted small" *ngIf="!standingInstructionRunsLoading[instruction.id] &&
-                    !standingInstructionRunsError[instruction.id] && standingInstructionRuns[instruction.id]?.length === 0">
-                    No runs yet for this instruction.
                   </p>
                   <div class="table-wrap standing-instruction-runs-table"
                     *ngIf="(standingInstructionRuns[instruction.id]?.length || 0) > 0">
@@ -330,6 +402,7 @@
                 </div>
               </td>
             </tr>
+            </ng-container>
             <tr *ngIf="!standingInstructionsLoading && !standingInstructionsError && standingInstructions.length === 0">
               <td colspan="7" class="empty">No standing instructions for this account yet.</td>
             </tr>
@@ -475,7 +548,7 @@
 
     <section class="panel audit-panel">
       <h2>Audit trail</h2>
-      <p class="muted small">Successful commands only — newest first.</p>
+      <p class="muted small">Successful commands only — oldest first.</p>
       <p class="muted small" *ngIf="auditTrailLoading">Loading audit trail...</p>
       <p class="field-error" *ngIf="auditTrailError">{{ auditTrailError }}</p>
       <button type="button" class="btn-secondary" *ngIf="auditTrailError" (click)="reloadAuditTrail()" [disabled]="auditTrailLoading">Retry loading audit trail</button>

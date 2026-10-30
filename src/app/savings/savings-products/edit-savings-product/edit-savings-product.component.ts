@@ -18,7 +18,8 @@ export class EditSavingsProductComponent implements OnInit {
     name: new FormControl('', { nonNullable: true, validators: [Validators.required, Validators.minLength(2)] }),
     nominalAnnualInterestRate: new FormControl<number | null>(null, { validators: [Validators.required, Validators.min(0)] }),
     minRequiredBalance: new FormControl<number | null>(null, { validators: [Validators.required, Validators.min(0)] }),
-    withdrawalFee: new FormControl<number | null>(null, { validators: [Validators.required, Validators.min(0)] })
+    withdrawalFee: new FormControl<number | null>(null, { validators: [Validators.required, Validators.min(0)] }),
+    closureFee: new FormControl<number | null>(null, { validators: [Validators.required, Validators.min(0)] })
   });
 
   constructor(private readonly route: ActivatedRoute, private readonly savingsService: SavingsService, private readonly router: Router) {}
@@ -31,7 +32,8 @@ export class EditSavingsProductComponent implements OnInit {
           name: product.name,
           nominalAnnualInterestRate: product.nominalAnnualInterestRate,
           minRequiredBalance: product.minRequiredBalance ?? 0,
-          withdrawalFee: product.withdrawalFee ?? 0
+          withdrawalFee: product.withdrawalFee ?? 0,
+          closureFee: product.closureFee ?? 0
         });
         this.loading = false;
       },
@@ -46,7 +48,8 @@ export class EditSavingsProductComponent implements OnInit {
       name: value.name.trim(),
       nominalAnnualInterestRate: Number(value.nominalAnnualInterestRate),
       minRequiredBalance: Number(value.minRequiredBalance),
-      withdrawalFee: Number(value.withdrawalFee)
+      withdrawalFee: Number(value.withdrawalFee),
+      closureFee: Number(value.closureFee)
     };
     this.saving = true;
     this.savingsService.updateProduct(this.productId, payload).subscribe(
@@ -57,7 +60,7 @@ export class EditSavingsProductComponent implements OnInit {
 
   cancel(): void { this.router.navigateByUrl('/savings-products'); }
 
-  fieldError(name: 'name' | 'nominalAnnualInterestRate' | 'minRequiredBalance' | 'withdrawalFee'): string | null {
+  fieldError(name: 'name' | 'nominalAnnualInterestRate' | 'minRequiredBalance' | 'withdrawalFee' | 'closureFee'): string | null {
     const control = this.productForm.get(name);
     if (!control || !control.errors || !(control.touched || control.dirty)) { return null; }
     if (control.errors['required']) { return 'This field is required.'; }
@@ -65,7 +68,8 @@ export class EditSavingsProductComponent implements OnInit {
     if (control.errors['min']) {
       if (name === 'nominalAnnualInterestRate') { return 'Interest rate cannot be negative.'; }
       if (name === 'minRequiredBalance') { return 'Minimum required balance cannot be negative.'; }
-      return 'Withdrawal fee cannot be negative.';
+      if (name === 'withdrawalFee') { return 'Withdrawal fee cannot be negative.'; }
+      return 'Closure fee cannot be negative.';
     }
     return 'Invalid value.';
   }

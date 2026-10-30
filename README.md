@@ -42,3 +42,7 @@ The inbox integration uses:
 - `POST /mini-fineract-provider/api/v1/makerchecker/{id}/reject` with `{ "reason": "..." }`.
 
 Request objects contain `id`, `type`, `accountId`, `accountNo`, `amount`, `status`, `madeBy`, `madeOn`, and optional `reason`. The provider must authorize approvals/rejections, reject self-approval, and record transaction and audit data only after approval.
+
+## Standing instruction run-due API
+
+`POST /mini-fineract-provider/api/v1/savings-accounts/{accountId}/standing-instructions/run-due` must execute only `ACTIVE` instructions, at most once per business date. A `PAUSED` instruction must not create a transfer, maker-checker request, or run-history record. For transfers at or above the provider's threshold, create a `PENDING` `TRANSFER` maker-checker request and link it to the instruction run without moving funds until approval. Return a run summary; the account screen displays it or shows the paused-instruction response in a red warning box and refreshes account activity. Run-history sections load from the run-history endpoint and appear only when run data exists (or while loading/showing a load error).

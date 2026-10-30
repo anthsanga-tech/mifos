@@ -27,13 +27,23 @@
 .account-number-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .45rem; align-items: start; margin-top: .9rem; }
 .account-number-form > button { margin-top: 1.1rem; }
 .account-actions { display: flex; gap: .5rem; margin-top: 1rem; }
+.closure-settlement-panel h2 { margin: 0 0 .25rem; font-size: 1rem; font-weight: 600; }
+.closure-preview-status, .closure-preview-summary { margin: .5rem 0; }
+.closure-preview-status { color: #286759; font-size: .78rem; font-weight: 700; }
+.closure-destination { max-width: 28rem; margin: .6rem 0; }
+.closure-blockers { margin: .6rem 0; padding: .4rem .7rem .4rem 1.8rem; border: 1px solid #c47b66; border-radius: 4px; background: #fff7f4; color: #a14d31; font-size: .78rem; }
+.closure-policy { margin: .5rem 0; padding-left: 1.4rem; color: #65756f; font-size: .78rem; }
+.closure-settlement-error { margin: .5rem 0; padding: .45rem .6rem; border: 1px solid #c47b66; border-radius: 4px; background: #fff7f4; }
+.closure-settlement-success { margin: .5rem 0; color: #286759; font-size: .82rem; }
 .standing-instruction-account-message { display: flex; flex-wrap: wrap; align-items: baseline; gap: .4rem; margin: .75rem 0 0; color: #286759; font-size: .82rem; }
-.standing-instruction-account-message a { color: #286759; font-weight: 700; }
+.standing-instruction-account-message.warning { padding: .55rem .7rem; border: 1px solid #c47b66; border-radius: 4px; background: #fff7f4; color: #a14d31; }
 .btn-primary, .btn-secondary, .btn-danger { min-height: 2.4rem; padding: .5rem .85rem; border-radius: 4px; font: inherit; font-size: .82rem; font-weight: 700; cursor: pointer; }
 .btn-primary { border: 0; background: #286759; color: #fff; }
 .btn-primary:hover:not(:disabled) { background: #1d5045; }
 .btn-secondary { border: 1px solid #286759; background: #fff; color: #286759; }
 .btn-danger { border: 1px solid #d2a395; background: #fff; color: #a14d31; }
+.closure-confirm-button { border-color: #a14d31; background: #a14d31; color: #fff; }
+.closure-confirm-button:hover:not(:disabled) { border-color: #873d27; background: #873d27; }
 .btn-undo { padding: .3rem .55rem; border: 1px solid #d2a395; border-radius: 4px; background: #fff; color: #a14d31; font: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; }
 .btn-undo:hover:not(:disabled) { background: #f9e7df; }
 .btn-release { padding: .3rem .55rem; border: 1px solid #286759; border-radius: 4px; background: #fff; color: #286759; font: inherit; font-size: .75rem; font-weight: 700; cursor: pointer; }
@@ -51,6 +61,7 @@
 .run-standing-instructions { margin: .5rem 0 .65rem; }
 .table-wrap.standing-instructions-table { max-height: 18rem; min-height: 0; margin-top: .5rem; }
 .standing-instruction-actions { white-space: nowrap; }
+.standing-instruction-error { padding: .55rem .7rem; border: 1px solid #c47b66; border-radius: 4px; background: #fff7f4; }
 .btn-inline { margin-right: .25rem; padding: .22rem .4rem; border: 1px solid #286759; border-radius: 3px; background: #fff; color: #286759; font: inherit; font-size: .68rem; font-weight: 700; cursor: pointer; }
 .btn-inline-danger { border-color: #c47b66; color: #a14d31; }
 .btn-inline:disabled { opacity: .5; cursor: not-allowed; }
