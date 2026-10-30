@@ -1,48 +1,26 @@
-# Frontend notes for the team
+# Frontend
 
-Angular 14-style layout matching **Mifos `web-app`**. Sample **Welcome** only.
+The frontend is an Angular 14 single-page application for the training backend. It includes login and home pages, user and client management, savings product/account screens, transaction activity, and a maker-checker inbox.
 
-## Structure
+## Run locally
 
-```text
-frontend/src/app/
-  app.module.ts
-  app-routing.module.ts
-  app.component.*
-  home/                      ← like web-app/src/app/home
-    home.module.ts
-    home-routing.module.ts
-    home.component.*
-    home.service.ts
-```
+From this directory:
 
-## Next steps
-
-Add a `users/` feature module (list/create) that calls:
-
-`GET/POST /mini-fineract-provider/api/v1/users`
-
-## Run
-
-```bash
+```powershell
 npm install
 npm start
 ```
 
-UI: http://localhost:4201
+Open http://localhost:4201. The backend must be running at `http://localhost:8088` for API requests to work. The Angular development server forwards `/mini-fineract-provider` requests using [proxy.conf.json](./proxy.conf.json).
 
-## Maker-checker inbox API
+Create a production build with:
 
-The frontend expects the savings provider to enforce the approval threshold on its existing deposit, withdrawal, transfer, and interest-posting endpoints. Commands with an amount of 10,000 or more must remain pending until a different user approves them; rejection must not move funds. The browser does not enforce these financial rules.
+```powershell
+npm run build
+```
 
-The inbox integration uses:
+## Authentication
 
-- `GET /mini-fineract-provider/api/v1/makerchecker` with optional `status` and `accountId` query parameters, returning an array of request objects.
-- `POST /mini-fineract-provider/api/v1/makerchecker/{id}/approve`.
-- `POST /mini-fineract-provider/api/v1/makerchecker/{id}/reject` with `{ "reason": "..." }`.
+The default frontend environment uses HTTP Basic authentication (`oauth.enabled` is `false`). The optional OAuth2/JWT mode uses the Keycloak settings in [src/environments/environment.ts](./src/environments/environment.ts) and must match the backend security configuration.
 
-Request objects contain `id`, `type`, `accountId`, `accountNo`, `amount`, `status`, `madeBy`, `madeOn`, and optional `reason`. The provider must authorize approvals/rejections, reject self-approval, and record transaction and audit data only after approval.
-
-## Standing instruction run-due API
-
-`POST /mini-fineract-provider/api/v1/savings-accounts/{accountId}/standing-instructions/run-due` must execute only `ACTIVE` instructions, at most once per business date. A `PAUSED` instruction must not create a transfer, maker-checker request, or run-history record. For transfers at or above the provider's threshold, create a `PENDING` `TRANSFER` maker-checker request and link it to the instruction run without moving funds until approval. Return a run summary; the account screen displays it or shows the paused-instruction response in a red warning box and refreshes account activity. Run-history sections load from the run-history endpoint and appear only when run data exists (or while loading/showing a load error).
+The browser provides the management interface; authorization and financial rules, including maker-checker approvals and standing-instruction processing, are enforced by the backend.

@@ -1,4 +1,4 @@
-﻿# SG-CBS Fineract (training mini backend)
+# SG-CBS Fineract (training mini backend)
 
 Sample Spring Boot + JAX-RS users API (Java 25 toolchain).
 
