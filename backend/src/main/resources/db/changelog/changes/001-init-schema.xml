@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <!-- Sample only: users table. Team can add more changeSets later (clients, savings, …). -->
+    <changeSet id="001-app-user" author="training">
+        <createTable tableName="m_appuser">
+            <column name="id" type="BIGINT" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="username" type="VARCHAR(50)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="display_name" type="VARCHAR(100)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="email" type="VARCHAR(100)"/>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_on" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="001-seed-app-user" author="training">
+        <insert tableName="m_appuser">
+            <column name="username" value="mifos"/>
+            <column name="display_name" value="Mifos Admin"/>
+            <column name="email" value="admin@example.com"/>
+            <column name="status" value="ACTIVE"/>
+            <column name="created_on" valueDate="now()"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>

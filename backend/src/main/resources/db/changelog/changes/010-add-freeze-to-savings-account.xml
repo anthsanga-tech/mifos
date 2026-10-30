@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="0" author="admin">
+        <addColumn tableName="m_savings_account">
+
+            <column
+                    name="freeze_status"
+                    type="VARCHAR(20)"
+                    defaultValue="NOT_FROZEN">
+                <constraints nullable="false"/>
+            </column>
+
+            <column
+                    name="freeze_reason"
+                    type="VARCHAR(255)"/>
+
+            <column
+                    name="frozen_on"
+                    type="TIMESTAMP"/>
+
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+                   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+                   https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="014-manual-interest-posting" author="developer">
+        <addColumn tableName="m_savings_account">
+            <column name="activated_on" type="TIMESTAMP"/>
+        </addColumn>
+
+        <sql>
+            UPDATE m_savings_account
+            SET activated_on = created_on
+            WHERE status = 'ACTIVE' AND activated_on IS NULL
+        </sql>
+
+        <addColumn tableName="m_savings_transaction">
+            <column name="interest_period_from" type="DATE"/>
+            <column name="interest_period_to" type="DATE"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

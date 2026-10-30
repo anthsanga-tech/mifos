@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <include file="db/changelog/changes/001-init-schema.xml"/>
+    <include file="db/changelog/changes/002-user-password.xml"/>
+    <include file="db/changelog/changes/003-client-schema.xml"/>
+    <include file="db/changelog/changes/004-savings-product-schema.xml"/>
+    <include file="db/changelog/changes/005-savings-account-schema.xml"/>
+    <include file="db/changelog/changes/006-savings-transaction-schema.xml"/>
+    <include file="db/changelog/changes/007-add-savings-transaction-fields.xml"/>
+    <include file="db/changelog/changes/008-add-not-null-constraints-to-running-balance-field.xml"/>
+    <include file="db/changelog/changes/009-add-transaction-group-id-to-savings-transaction.xml"/>
+    <include file="db/changelog/changes/010-add-freeze-to-savings-account.xml"/>
+    <include file="db/changelog/changes/011-savings-account-hold-schema.xml"/>
+    <include file="db/changelog/changes/012-add-savings-product-rules.xml"/>
+    <include file="db/changelog/changes/013-savings-account-notes-and-audit-trail.xml"/>
+    <include file="db/changelog/changes/014-manual-interest-posting.xml"/>
+    <include file="db/changelog/changes/015-savings-maker-checker.xml"/>
+    <include file="db/changelog/changes/016-standing-instruction-schema.xml"/>
+    <include file="db/changelog/changes/017-standing-instruction-run-schema.xml"/>
+    <include file="db/changelog/changes/018-standing-instruction-run-rejection-reason.xml"/>
+    <include file="db/changelog/changes/019-standing-instruction-transfer-group-id-length.xml"/>
+    <include file="db/changelog/changes/020-add-savings-product-closure-fee.xml"/>
+<!--    <include file="db/changelog/changes/999-add-interest-rule-to-savings-product.xml"/>-->
+</databaseChangeLog>

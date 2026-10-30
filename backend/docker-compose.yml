@@ -1,0 +1,36 @@
+# PostgreSQL + Keycloak for the mini training app (Fineract-style OAuth2/JWT)
+services:
+  postgresql:
+    image: postgres:16.6
+    container_name: mini-fineract-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: mini_fineract
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d mini_fineract"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  keycloak:
+    # Docker Hub (use if quay.io DNS fails). Official is also on quay.io/keycloak/keycloak
+    image: keycloak/keycloak:26.2.5
+    container_name: mini-fineract-keycloak
+    restart: unless-stopped
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_PORT: "9000"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+    ports:
+      - "9000:8080"
+    volumes:
+      - ./keycloak/realm-training.json:/opt/keycloak/data/import/realm-training.json:ro
